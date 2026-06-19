@@ -1,13 +1,27 @@
 {
   "manifest_version": 3,
-  "name": "My Extension",
+  "name": "TabLoop",
   "version": "1.0.0",
-  "description": "A sleek modern Chrome Extension",
+  "description": "Limit your open tabs and force yourself to deal with the backlog.",
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
   "action": {
     "default_popup": "index.html"
   },
+  "options_ui": {
+    "page": "src/options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "src/background.ts",
+    "type": "module"
+  },
   "permissions": [
     "storage",
-    "activeTab"
+    "tabs",
+    "windows"
   ]
 }
