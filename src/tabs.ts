@@ -6,12 +6,13 @@ export interface TabInfo {
   pinned: boolean;
   url?: string;
   windowId: number;
+  /** Chrome's native "last became active" time (ms since epoch); drives LRU selection. */
+  lastAccessed?: number;
 }
 
-/** Per-tab timestamps tracked across the service-worker lifetime. */
+/** Per-tab creation timestamps tracked across the service-worker lifetime. */
 export interface TabTimes {
   creation: Record<number, number>;
-  lastActive: Record<number, number>;
 }
 
 /** The extension's own options page must never be recycled. */
@@ -33,6 +34,9 @@ export function isOverLimit(tabs: TabInfo[], settings: Settings): boolean {
 /**
  * Pick the tab to recycle when the limit is exceeded, or null if nothing may be
  * touched (everything is pinned/protected, so the new tab should be allowed).
+ *
+ * - 'lru'      => the tab you viewed longest ago (Chrome's lastAccessed).
+ * - 'creation' => the tab opened longest ago (our own tracked time).
  */
 export function selectOldestTab(
   tabs: TabInfo[],
@@ -48,9 +52,7 @@ export function selectOldestTab(
   if (candidates.length === 0) return null;
 
   const keyOf = (t: TabInfo): number =>
-    settings.oldestDefinition === 'lru'
-      ? times.lastActive[t.id] ?? 0
-      : times.creation[t.id] ?? 0;
+    settings.oldestDefinition === 'lru' ? t.lastAccessed ?? 0 : times.creation[t.id] ?? 0;
 
   // Smallest timestamp wins; ties keep the earlier tab (stable, leftmost-by-index).
   return candidates.reduce((oldest, t) => (keyOf(t) < keyOf(oldest) ? t : oldest));

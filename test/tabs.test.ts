@@ -9,8 +9,10 @@ import {
   type TabTimes,
 } from '../src/tabs.ts';
 import { withUrlAdded } from '../src/backlog.ts';
+import { DEFAULT_SETTINGS } from '../src/settings.ts';
 import type { Settings } from '../src/types.ts';
 
+// Fixture defaults to 'creation' mode; LRU tests override it explicitly.
 const baseSettings: Settings = {
   maxTabs: 3,
   limitScope: 'global',
@@ -22,9 +24,13 @@ function tab(id: number, extra: Partial<TabInfo> = {}): TabInfo {
   return { id, pinned: false, windowId: 1, ...extra };
 }
 
-function times(creation: Record<number, number>, lastActive: Record<number, number> = {}): TabTimes {
-  return { creation, lastActive };
+function times(creation: Record<number, number> = {}): TabTimes {
+  return { creation };
 }
+
+test('the default configuration recycles the least-recently-used tab', () => {
+  assert.equal(DEFAULT_SETTINGS.oldestDefinition, 'lru');
+});
 
 test('countRelevantTabs counts every tab when excludePinned is off', () => {
   const tabs = [tab(1), tab(2, { pinned: true }), tab(3)];
@@ -57,12 +63,19 @@ test('selectOldestTab picks the earliest creation time, ignoring the new tab', (
   assert.equal(oldest?.id, 2);
 });
 
-test('selectOldestTab uses last-active time in LRU mode', () => {
-  const tabs = [tab(1), tab(2), tab(3)];
-  const oldest = selectOldestTab(tabs, 3, times({ 1: 1, 2: 1, 3: 1 }, { 1: 300, 2: 100, 3: 200 }), {
-    ...baseSettings,
-    oldestDefinition: 'lru',
-  });
+test('selectOldestTab uses Chrome lastAccessed in LRU mode (oldest touch wins)', () => {
+  const tabs = [
+    tab(1, { lastAccessed: 300 }),
+    tab(2, { lastAccessed: 100 }),
+    tab(3, { lastAccessed: 200 }),
+  ];
+  const oldest = selectOldestTab(tabs, 3, times(), { ...baseSettings, oldestDefinition: 'lru' });
+  assert.equal(oldest?.id, 2);
+});
+
+test('LRU treats a never-accessed tab as the oldest touch', () => {
+  const tabs = [tab(1, { lastAccessed: 500 }), tab(2)];
+  const oldest = selectOldestTab(tabs, 99, times(), { ...baseSettings, oldestDefinition: 'lru' });
   assert.equal(oldest?.id, 2);
 });
 
@@ -80,7 +93,7 @@ test('selectOldestTab never returns the options page', () => {
 
 test('selectOldestTab returns null when nothing is recyclable', () => {
   const tabs = [tab(1, { pinned: true }), tab(2, { pinned: true }), tab(3)];
-  assert.equal(selectOldestTab(tabs, 3, times({}), baseSettings), null);
+  assert.equal(selectOldestTab(tabs, 3, times(), baseSettings), null);
 });
 
 test('selectOldestTab breaks ties by tab order (leftmost)', () => {

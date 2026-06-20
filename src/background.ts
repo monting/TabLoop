@@ -12,6 +12,7 @@ function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
     pinned: tab.pinned,
     url: tab.url || tab.pendingUrl || undefined,
     windowId: tab.windowId,
+    lastAccessed: tab.lastAccessed,
   };
 }
 
@@ -23,18 +24,14 @@ function queryScopedTabs(settings: Settings, windowId: number): Promise<chrome.t
 // Tab-timing lifecycle
 //
 // Listeners are registered synchronously at the top level so the worker can be
-// woken to handle them. Seeding runs on install and on every browser startup,
-// because session storage (and tab ids) reset when the browser restarts.
+// woken to handle them. Creation times are seeded on install and on every
+// browser startup, because session storage (and tab ids) reset when the browser
+// restarts. LRU uses Chrome's native lastAccessed, so it needs no tracking.
 // ---------------------------------------------------------------------------
 
 async function seedExistingTabs(): Promise<void> {
   const tabs = await chrome.tabs.query({});
-  await state.seed(
-    tabs.filter((t): t is chrome.tabs.Tab & { id: number } => t.id != null).map((t) => ({
-      id: t.id,
-      active: t.active,
-    })),
-  );
+  await state.seed(tabs.filter((t) => t.id != null).map((t) => t.id!));
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -44,9 +41,6 @@ chrome.runtime.onStartup.addListener(() => {
   void seedExistingTabs();
 });
 
-chrome.tabs.onActivated.addListener((info) => {
-  void state.recordActivated(info.tabId);
-});
 chrome.tabs.onRemoved.addListener((tabId) => {
   void state.forget(tabId);
 });
@@ -67,7 +61,7 @@ chrome.tabs.onCreated.addListener((tab) => {
 
 async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
   if (tab.id == null) return;
-  await state.recordCreated(tab.id, tab.active ?? false);
+  await state.recordCreated(tab.id);
 
   const settings = await loadSettings();
   const tabs = (await queryScopedTabs(settings, tab.windowId))
