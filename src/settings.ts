@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS: Settings = {
   limitScope: 'global',
   oldestDefinition: 'lru',
   excludePinned: true,
+  excludeIncognito: true,
 };
 
 /** Load settings from sync storage, falling back to defaults for missing keys. */
