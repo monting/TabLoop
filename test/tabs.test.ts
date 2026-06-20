@@ -9,7 +9,7 @@ import {
   type TabInfo,
   type TabTimes,
 } from '../src/tabs.ts';
-import { withUrlAdded } from '../src/backlog.ts';
+import { withUrlAdded } from '../src/stash.ts';
 import { DEFAULT_SETTINGS } from '../src/settings.ts';
 import type { Settings } from '../src/types.ts';
 
@@ -168,6 +168,11 @@ test('withUrlAdded inserts newest-first and de-duplicates by url', () => {
   items = withUrlAdded(items, 'https://a.com', 3);
   assert.deepEqual(items.map((i) => i.url), ['https://a.com', 'https://b.com']);
   assert.equal(items[0].time, 3);
+});
+
+test('withUrlAdded keeps an optional title', () => {
+  const items = withUrlAdded([], 'https://a.com', 1, 'Example Site');
+  assert.equal(items[0].title, 'Example Site');
 });
 
 test('withUrlAdded caps the list at 50 entries, keeping the newest', () => {

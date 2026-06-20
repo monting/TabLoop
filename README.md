@@ -1,12 +1,12 @@
 # TabLoop
 
-TabLoop is a modern Chrome Extension designed to help you conquer tab hoarding. By setting a customizable limit on your open tabs, TabLoop forces you to confront your backlog. When you hit your limit and open a new tab, the extension intercepts it, surfacing your oldest tab to be dealt with. The link you were trying to open isn't thrown away — it's saved to a backlog you can revisit (or reopen) from the toolbar popup.
+TabLoop is a modern Chrome Extension designed to help you conquer tab hoarding. By setting a customizable limit on your open tabs, TabLoop forces you to confront your pile. When you hit your limit and open a new tab, the extension intercepts it, surfacing your oldest tab to be dealt with. The link you were trying to open isn't thrown away — it's saved to your **Stash**, which you can restore from the toolbar popup. You can also stash any open tab yourself to instantly free up a slot.
 
 ## Features
 
 - **Strict Tab Limits**: Define your absolute maximum number of tabs globally or per-window.
 - **Smart Recycling**: Choose between recycling the *oldest created* tab or the *least recently used* (LRU) tab.
-- **Blocked-Tab Backlog**: Links you open while at your limit are saved to a backlog instead of being lost, with a toolbar badge showing how many are waiting. Reopen them from the popup once you've made room.
+- **Stash**: Park any open tab in your Stash to instantly free up a slot — it closes but is saved (with its title) for later. Tabs blocked at the limit land here too, so nothing is lost. A toolbar badge shows how many are waiting; restore them from the popup once you've made room.
 - **Live Tab Counter**: The toolbar popup shows your current tab count against your limit at a glance.
 - **Pinned Tab Protection**: Exclude your important pinned tabs from being touched (and from counting toward the limit).
 - **System-Page Exemption**: Chrome's internal pages (`chrome://…`) and TabLoop's own settings page never count toward your limit and are never recycled — only the new-tab page stays enforced.

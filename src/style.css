@@ -141,8 +141,39 @@ body {
   color: var(--text-secondary);
 }
 
-/* Backlog */
-.backlog {
+/* Stash this tab button */
+.stash-btn {
+  width: 100%;
+  padding: 12px;
+  font-family: var(--font-family);
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.35);
+}
+
+.stash-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+}
+
+.stash-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.stash-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Stash list */
+.stash {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -150,14 +181,14 @@ body {
   padding: 16px;
 }
 
-.backlog-head {
+.stash-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
 }
 
-.backlog-title {
+.stash-title {
   font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
@@ -177,7 +208,7 @@ body {
   margin-left: 4px;
 }
 
-.backlog-list {
+.stash-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -189,14 +220,14 @@ body {
   gap: 6px;
 }
 
-.backlog-item {
+.stash-item {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 6px 6px 0;
 }
 
-.backlog-item .url {
+.stash-item .url {
   flex: 1;
   min-width: 0;
   font-size: 13px;
@@ -206,7 +237,7 @@ body {
   text-overflow: ellipsis;
 }
 
-.reopen {
+.restore {
   flex-shrink: 0;
   font-size: 12px;
   font-weight: 600;
@@ -219,11 +250,11 @@ body {
   transition: background 0.2s ease;
 }
 
-.reopen:hover:not(:disabled) {
+.restore:hover:not(:disabled) {
   background: rgba(139, 92, 246, 0.3);
 }
 
-.reopen:disabled {
+.restore:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
@@ -273,11 +304,11 @@ body {
 }
 
 /* Scrollbar */
-.backlog-list::-webkit-scrollbar {
+.stash-list::-webkit-scrollbar {
   width: 6px;
 }
 
-.backlog-list::-webkit-scrollbar-thumb {
+.stash-list::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 999px;
 }

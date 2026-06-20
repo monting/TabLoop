@@ -1,9 +1,9 @@
-import type { BacklogItem, Settings } from './types';
+import type { StashItem, Settings } from './types';
 import type { TabInfo } from './tabs';
 import { isExemptUrl, isOverLimit, isStashableUrl, selectOldestTab } from './tabs';
 import { loadSettings } from './settings';
 import * as state from './state';
-import { addToBacklog, BACKLOG_KEY, getBacklog } from './backlog';
+import { addToStash, STASH_KEY, getStash } from './stash';
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
@@ -79,11 +79,11 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
   // Nothing is recyclable (all pinned/protected) — let the new tab through.
   if (!oldest) return;
 
-  // Save the blocked destination so it isn't lost, then close the new tab and
-  // surface the oldest one to be dealt with.
+  // Save the blocked destination to the stash so it isn't lost, then close the
+  // new tab and surface the oldest one to be dealt with.
   const blockedUrl = tab.pendingUrl || tab.url;
   if (isStashableUrl(blockedUrl)) {
-    await addToBacklog(blockedUrl);
+    await addToStash(blockedUrl);
   }
 
   await chrome.tabs.remove(tab.id);
@@ -94,7 +94,7 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Action badge: surfaces how many blocked destinations are waiting.
+// Action badge: surfaces how many stashed pages are waiting.
 // ---------------------------------------------------------------------------
 
 async function updateBadge(count: number): Promise<void> {
@@ -103,11 +103,11 @@ async function updateBadge(count: number): Promise<void> {
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes[BACKLOG_KEY]) {
-    const items = (changes[BACKLOG_KEY].newValue as BacklogItem[] | undefined) ?? [];
+  if (area === 'local' && changes[STASH_KEY]) {
+    const items = (changes[STASH_KEY].newValue as StashItem[] | undefined) ?? [];
     void updateBadge(items.length);
   }
 });
 
-// Reflect current backlog whenever the worker spins up.
-void getBacklog().then((items) => updateBadge(items.length));
+// Reflect the current stash whenever the worker spins up.
+void getStash().then((items) => updateBadge(items.length));

@@ -1,17 +1,26 @@
 import './style.css';
-import type { BacklogItem, Settings } from './types';
+import type { Settings, StashItem } from './types';
 import type { TabInfo } from './tabs';
-import { countRelevantTabs } from './tabs';
+import { countRelevantTabs, isStashableUrl } from './tabs';
 import { loadSettings } from './settings';
-import { clearBacklog, getBacklog, removeFromBacklog } from './backlog';
+import { addToStash, clearStash, getStash, removeFromStash } from './stash';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
+
+interface ActiveTab {
+  id: number;
+  url?: string;
+  title?: string;
+}
 
 interface PopupState {
   settings: Settings;
   count: number;
-  backlog: BacklogItem[];
+  stash: StashItem[];
+  activeTab: ActiveTab | null;
 }
+
+let currentState: PopupState | null = null;
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
@@ -24,10 +33,12 @@ async function readState(): Promise<PopupState> {
     settings.limitScope === 'per-window' ? { currentWindow: true } : {},
   );
   const tabs = rawTabs.map(toTabInfo).filter((t): t is TabInfo => t !== null);
+  const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
   return {
     settings,
     count: countRelevantTabs(tabs, settings),
-    backlog: await getBacklog(),
+    stash: await getStash(),
+    activeTab: active?.id != null ? { id: active.id, url: active.url, title: active.title } : null,
   };
 }
 
@@ -42,12 +53,13 @@ function formatUrl(url: string): string {
 }
 
 function render(state: PopupState): void {
-  const { settings, count, backlog } = state;
+  const { settings, count, stash, activeTab } = state;
   const max = settings.maxTabs;
   const atLimit = count >= max;
   const ratio = max > 0 ? count / max : 0;
   const level = ratio >= 1 ? 'over' : ratio >= 0.8 ? 'high' : 'ok';
   const remaining = Math.max(0, max - count);
+  const canStash = !!activeTab && isStashableUrl(activeTab.url);
 
   app.innerHTML = `
     <div class="header">
@@ -60,52 +72,56 @@ function render(state: PopupState): void {
       <div class="bar"><div class="bar-fill" style="width:${Math.min(100, ratio * 100)}%"></div></div>
       <p class="hint">${
         atLimit
-          ? 'At limit &mdash; new tabs go to the backlog'
+          ? 'At limit &mdash; stash a tab to free a slot'
           : `${remaining} slot${remaining === 1 ? '' : 's'} remaining`
       }</p>
     </div>
 
-    <div class="card backlog">
-      <div class="backlog-head">
-        <span class="backlog-title">Backlog${backlog.length ? ` <span class="pill">${backlog.length}</span>` : ''}</span>
-        ${backlog.length ? '<button class="link" data-act="clear">Clear all</button>' : ''}
+    <button class="stash-btn" data-act="stash-current"${canStash ? '' : ' disabled'} title="${
+      canStash ? 'Close this tab and save it to your Stash' : "This page can't be stashed"
+    }">Stash this tab</button>
+
+    <div class="card stash">
+      <div class="stash-head">
+        <span class="stash-title">Stash${stash.length ? ` <span class="pill">${stash.length}</span>` : ''}</span>
+        ${stash.length ? '<button class="link" data-act="clear">Clear all</button>' : ''}
       </div>
-      <ul class="backlog-list"></ul>
+      <ul class="stash-list"></ul>
     </div>
 
     <button class="link settings" data-act="settings">Settings</button>
   `;
 
-  const list = app.querySelector<HTMLUListElement>('.backlog-list')!;
-  if (backlog.length === 0) {
+  const list = app.querySelector<HTMLUListElement>('.stash-list')!;
+  if (stash.length === 0) {
     const empty = document.createElement('li');
     empty.className = 'empty';
-    empty.textContent = "No blocked tabs. You're all caught up.";
+    empty.textContent = 'Nothing stashed yet.';
     list.append(empty);
   } else {
-    for (const item of backlog) {
+    for (const item of stash) {
       list.append(renderItem(item, atLimit));
     }
   }
 }
 
-function renderItem(item: BacklogItem, atLimit: boolean): HTMLLIElement {
+function renderItem(item: StashItem, atLimit: boolean): HTMLLIElement {
   const li = document.createElement('li');
-  li.className = 'backlog-item';
+  li.className = 'stash-item';
 
-  const open = document.createElement('button');
-  open.className = 'reopen';
-  open.textContent = 'Open';
-  open.dataset.url = item.url;
-  open.dataset.act = 'reopen';
+  const restore = document.createElement('button');
+  restore.className = 'restore';
+  restore.textContent = 'Restore';
+  restore.dataset.url = item.url;
+  restore.dataset.act = 'restore';
   if (atLimit) {
-    open.disabled = true;
-    open.title = 'Close a tab to make room first';
+    restore.disabled = true;
+    restore.title = 'Stash or close a tab to make room first';
   }
 
   const label = document.createElement('span');
   label.className = 'url';
-  label.textContent = formatUrl(item.url);
+  label.textContent = item.title?.trim() || formatUrl(item.url);
   label.title = item.url;
 
   const remove = document.createElement('button');
@@ -113,14 +129,15 @@ function renderItem(item: BacklogItem, atLimit: boolean): HTMLLIElement {
   remove.textContent = '×';
   remove.dataset.url = item.url;
   remove.dataset.act = 'remove';
-  remove.title = 'Remove from backlog';
+  remove.title = 'Remove from stash';
 
-  li.append(open, label, remove);
+  li.append(restore, label, remove);
   return li;
 }
 
 async function refresh(): Promise<void> {
-  render(await readState());
+  currentState = await readState();
+  render(currentState);
 }
 
 app.addEventListener('click', async (e) => {
@@ -133,18 +150,27 @@ app.addEventListener('click', async (e) => {
       chrome.runtime.openOptionsPage();
       window.close();
       break;
+    case 'stash-current': {
+      const active = currentState?.activeTab;
+      if (active && isStashableUrl(active.url)) {
+        await addToStash(active.url, active.title);
+        await chrome.tabs.remove(active.id);
+        await refresh();
+      }
+      break;
+    }
     case 'clear':
-      await clearBacklog();
+      await clearStash();
       await refresh();
       break;
     case 'remove':
-      if (url) await removeFromBacklog(url);
+      if (url) await removeFromStash(url);
       await refresh();
       break;
-    case 'reopen':
+    case 'restore':
       if (url && !(target as HTMLButtonElement).disabled) {
         await chrome.tabs.create({ url });
-        await removeFromBacklog(url);
+        await removeFromStash(url);
         window.close();
       }
       break;
