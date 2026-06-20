@@ -1,108 +1,115 @@
-import type { Settings } from './types';
+import type { BacklogItem, Settings } from './types';
+import type { TabInfo } from './tabs';
+import { isOverLimit, isStashableUrl, selectOldestTab } from './tabs';
+import { loadSettings } from './settings';
+import * as state from './state';
+import { addToBacklog, BACKLOG_KEY, getBacklog } from './backlog';
 
-// State management
-let tabCreationTimes: Record<number, number> = {};
-let tabLastActiveTimes: Record<number, number> = {};
+function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
+  if (tab.id == null) return null;
+  return {
+    id: tab.id,
+    pinned: tab.pinned,
+    url: tab.url || tab.pendingUrl || undefined,
+    windowId: tab.windowId,
+  };
+}
 
-const defaultSettings: Settings = {
-  maxTabs: 10,
-  limitScope: 'global',
-  oldestDefinition: 'creation',
-  excludePinned: true
-};
+function queryScopedTabs(settings: Settings, windowId: number): Promise<chrome.tabs.Tab[]> {
+  return chrome.tabs.query(settings.limitScope === 'per-window' ? { windowId } : {});
+}
 
-let currentSettings = { ...defaultSettings };
+// ---------------------------------------------------------------------------
+// Tab-timing lifecycle
+//
+// Listeners are registered synchronously at the top level so the worker can be
+// woken to handle them. Seeding runs on install and on every browser startup,
+// because session storage (and tab ids) reset when the browser restarts.
+// ---------------------------------------------------------------------------
 
-// Load settings
-chrome.storage.sync.get('settings', (data) => {
-  if (data.settings) {
-    currentSettings = { ...defaultSettings, ...data.settings };
-  }
+async function seedExistingTabs(): Promise<void> {
+  const tabs = await chrome.tabs.query({});
+  await state.seed(
+    tabs.filter((t): t is chrome.tabs.Tab & { id: number } => t.id != null).map((t) => ({
+      id: t.id,
+      active: t.active,
+    })),
+  );
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  void seedExistingTabs();
+});
+chrome.runtime.onStartup.addListener(() => {
+  void seedExistingTabs();
 });
 
-// Listen for settings updates
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync' && changes.settings) {
-    const newSettings = changes.settings.newValue as Partial<Settings> | undefined;
-    if (newSettings) {
-      currentSettings = { ...currentSettings, ...newSettings };
-    }
-  }
+chrome.tabs.onActivated.addListener((info) => {
+  void state.recordActivated(info.tabId);
 });
-
-// Initialize state for existing tabs
-chrome.tabs.query({}, (tabs) => {
-  const now = Date.now();
-  tabs.forEach(tab => {
-    if (tab.id) {
-      tabCreationTimes[tab.id] = now;
-      tabLastActiveTimes[tab.id] = tab.active ? now : 0;
-    }
-  });
-});
-
-chrome.tabs.onActivated.addListener((activeInfo) => {
-  tabLastActiveTimes[activeInfo.tabId] = Date.now();
-});
-
 chrome.tabs.onRemoved.addListener((tabId) => {
-  delete tabCreationTimes[tabId];
-  delete tabLastActiveTimes[tabId];
+  void state.forget(tabId);
 });
 
-let isProcessing = false;
+// ---------------------------------------------------------------------------
+// Enforcement
+//
+// onCreated events are funnelled through a promise queue so bursts (session
+// restore, middle-clicking links) are handled one-at-a-time and in order —
+// none are dropped or left untracked.
+// ---------------------------------------------------------------------------
 
-chrome.tabs.onCreated.addListener(async (newTab) => {
-  if (isProcessing || !newTab.id) return;
-  
-  tabCreationTimes[newTab.id] = Date.now();
-  tabLastActiveTimes[newTab.id] = newTab.active ? Date.now() : 0;
+let queue: Promise<void> = Promise.resolve();
 
-  try {
-    isProcessing = true;
-    
-    // Evaluate limits
-    const tabs = await chrome.tabs.query(
-      currentSettings.limitScope === 'per-window' ? { windowId: newTab.windowId } : {}
-    );
-    
-    if (tabs.length > currentSettings.maxTabs) {
-      // Find oldest tab candidates
-      let candidates = tabs.filter(t => t.id !== newTab.id);
-      
-      if (currentSettings.excludePinned) {
-        candidates = candidates.filter(t => !t.pinned);
-      }
-      
-      // Protect the options page from being closed if it's the oldest
-      candidates = candidates.filter(t => !t.url?.includes('options.html'));
+chrome.tabs.onCreated.addListener((tab) => {
+  queue = queue.then(() => handleCreated(tab)).catch((err) => console.error('TabLoop:', err));
+});
 
-      // If no tabs can be moved, allow creation
-      if (candidates.length === 0) {
-          return;
-      }
-      
-      candidates.sort((a, b) => {
-        if (currentSettings.oldestDefinition === 'lru') {
-          return (tabLastActiveTimes[a.id!] || 0) - (tabLastActiveTimes[b.id!] || 0);
-        } else {
-          return (tabCreationTimes[a.id!] || 0) - (tabCreationTimes[b.id!] || 0);
-        }
-      });
-      
-      const oldestTab = candidates[0];
-      
-      // Action: Close new tab, move oldest to current window, and focus it
-      await chrome.tabs.remove(newTab.id);
-      
-      if (oldestTab.windowId !== newTab.windowId) {
-        await chrome.tabs.move(oldestTab.id!, { windowId: newTab.windowId, index: -1 });
-      }
-      await chrome.tabs.update(oldestTab.id!, { active: true });
-    }
-  } catch (error) {
-    console.error("Error processing new tab:", error);
-  } finally {
-    isProcessing = false;
+async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
+  if (tab.id == null) return;
+  await state.recordCreated(tab.id, tab.active ?? false);
+
+  const settings = await loadSettings();
+  const tabs = (await queryScopedTabs(settings, tab.windowId))
+    .map(toTabInfo)
+    .filter((t): t is TabInfo => t !== null);
+
+  if (!isOverLimit(tabs, settings)) return;
+
+  const times = await state.getTimes();
+  const oldest = selectOldestTab(tabs, tab.id, times, settings);
+  // Nothing is recyclable (all pinned/protected) — let the new tab through.
+  if (!oldest) return;
+
+  // Save the blocked destination so it isn't lost, then close the new tab and
+  // surface the oldest one to be dealt with.
+  const blockedUrl = tab.pendingUrl || tab.url;
+  if (isStashableUrl(blockedUrl)) {
+    await addToBacklog(blockedUrl);
+  }
+
+  await chrome.tabs.remove(tab.id);
+  if (oldest.windowId !== tab.windowId) {
+    await chrome.tabs.move(oldest.id, { windowId: tab.windowId, index: -1 });
+  }
+  await chrome.tabs.update(oldest.id, { active: true });
+}
+
+// ---------------------------------------------------------------------------
+// Action badge: surfaces how many blocked destinations are waiting.
+// ---------------------------------------------------------------------------
+
+async function updateBadge(count: number): Promise<void> {
+  await chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
+  await chrome.action.setBadgeText({ text: count > 0 ? String(count) : '' });
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes[BACKLOG_KEY]) {
+    const items = (changes[BACKLOG_KEY].newValue as BacklogItem[] | undefined) ?? [];
+    void updateBadge(items.length);
   }
 });
+
+// Reflect current backlog whenever the worker spins up.
+void getBacklog().then((items) => updateBadge(items.length));
