@@ -4,6 +4,7 @@ import type { Settings } from './types';
 export interface TabInfo {
   id: number;
   pinned: boolean;
+  incognito: boolean;
   url?: string;
   windowId: number;
   /** Chrome's native "last became active" time (ms since epoch); drives LRU selection. */
@@ -32,9 +33,14 @@ export function isExemptUrl(url: string | undefined): boolean {
   return /^chrome:\/\//i.test(url) && !NEW_TAB_PAGE.test(url);
 }
 
-/** Tabs that count toward the limit (exempt tabs, and pinned tabs when configured, are excluded). */
+/** Tabs that count toward the limit (exempt URLs, and pinned/incognito tabs when configured, are excluded). */
 export function relevantTabs(tabs: TabInfo[], settings: Settings): TabInfo[] {
-  return tabs.filter((t) => !isExemptUrl(t.url) && !(settings.excludePinned && t.pinned));
+  return tabs.filter(
+    (t) =>
+      !isExemptUrl(t.url) &&
+      !(settings.excludePinned && t.pinned) &&
+      !(settings.excludeIncognito && t.incognito),
+  );
 }
 
 export function countRelevantTabs(tabs: TabInfo[], settings: Settings): number {

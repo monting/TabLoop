@@ -3,6 +3,7 @@ export interface Settings {
   limitScope: 'global' | 'per-window';
   oldestDefinition: 'creation' | 'lru';
   excludePinned: boolean;
+  excludeIncognito: boolean;
 }
 
 /** A destination that was blocked because the tab limit was reached. */
