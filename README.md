@@ -1,12 +1,14 @@
 # TabLoop
 
-TabLoop is a modern Chrome Extension designed to help you conquer tab hoarding. By setting a customizable limit on your open tabs, TabLoop forces you to confront your backlog. When you hit your limit and open a new tab, the extension intercepts it, seamlessly moving your oldest tab to your active window to be dealt with.
+TabLoop is a modern Chrome Extension designed to help you conquer tab hoarding. By setting a customizable limit on your open tabs, TabLoop forces you to confront your backlog. When you hit your limit and open a new tab, the extension intercepts it, surfacing your oldest tab to be dealt with. The link you were trying to open isn't thrown away — it's saved to a backlog you can revisit (or reopen) from the toolbar popup.
 
 ## Features
 
 - **Strict Tab Limits**: Define your absolute maximum number of tabs globally or per-window.
 - **Smart Recycling**: Choose between recycling the *oldest created* tab or the *least recently used* (LRU) tab.
-- **Pinned Tab Protection**: Exclude your important pinned tabs from being touched.
+- **Blocked-Tab Backlog**: Links you open while at your limit are saved to a backlog instead of being lost, with a toolbar badge showing how many are waiting. Reopen them from the popup once you've made room.
+- **Live Tab Counter**: The toolbar popup shows your current tab count against your limit at a glance.
+- **Pinned Tab Protection**: Exclude your important pinned tabs from being touched (and from counting toward the limit).
 - **Premium Interface**: Configure your preferences via a sleek, dark-glassmorphism options page.
 
 ## How to Run Locally for Development
@@ -27,7 +29,7 @@ This extension is built with Vite, TypeScript, and standard Manifest V3.
    - Open your Chrome browser and navigate to `chrome://extensions/`
    - Enable **Developer mode** in the top right corner.
    - Click **Load unpacked** and select the newly generated `dist` folder located inside the `tabLoop` project directory.
-   - Vite provides Hot Module Replacement (HMR). When you save changes to your code, the extension will automatically reload!
+   - Vite watches for changes: the popup and options pages hot-reload automatically. Changes to the background service worker need a manual reload from the `chrome://extensions/` page.
 
 ## How to Build for Production
 
