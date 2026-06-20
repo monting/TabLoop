@@ -1,0 +1,2 @@
+- offer an escape hatch button to open a new tab outside the limit. button is only accessible in the extension popup. 
+- show overage count in the UI
