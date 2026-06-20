@@ -1,11 +1,5 @@
 import type { Settings } from './types';
-
-const defaultSettings: Settings = {
-  maxTabs: 10,
-  limitScope: 'global',
-  oldestDefinition: 'creation',
-  excludePinned: true
-};
+import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings';
 
 const maxTabsInput = document.getElementById('maxTabs') as HTMLInputElement;
 const limitScopeSelect = document.getElementById('limitScope') as HTMLSelectElement;
@@ -14,28 +8,33 @@ const excludePinnedCheckbox = document.getElementById('excludePinned') as HTMLIn
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const statusText = document.getElementById('status') as HTMLSpanElement;
 
-// Restore settings
-chrome.storage.sync.get('settings', (data) => {
-  const settings: Settings = data.settings ? { ...defaultSettings, ...data.settings } : defaultSettings;
+// Restore saved settings.
+void loadSettings().then((settings) => {
   maxTabsInput.value = settings.maxTabs.toString();
   limitScopeSelect.value = settings.limitScope;
   oldestDefinitionSelect.value = settings.oldestDefinition;
   excludePinnedCheckbox.checked = settings.excludePinned;
 });
 
-// Save settings
-saveBtn.addEventListener('click', () => {
+function readMaxTabs(): number {
+  const parsed = parseInt(maxTabsInput.value, 10);
+  if (!Number.isFinite(parsed)) return DEFAULT_SETTINGS.maxTabs;
+  return Math.min(500, Math.max(1, parsed));
+}
+
+saveBtn.addEventListener('click', async () => {
   const settings: Settings = {
-    maxTabs: parseInt(maxTabsInput.value, 10) || 10,
+    maxTabs: readMaxTabs(),
     limitScope: limitScopeSelect.value as Settings['limitScope'],
     oldestDefinition: oldestDefinitionSelect.value as Settings['oldestDefinition'],
-    excludePinned: excludePinnedCheckbox.checked
+    excludePinned: excludePinnedCheckbox.checked,
   };
+  // Reflect any clamping back to the field.
+  maxTabsInput.value = settings.maxTabs.toString();
 
-  chrome.storage.sync.set({ settings }, () => {
-    statusText.style.opacity = '1';
-    setTimeout(() => {
-      statusText.style.opacity = '0';
-    }, 2500);
-  });
+  await saveSettings(settings);
+  statusText.style.opacity = '1';
+  setTimeout(() => {
+    statusText.style.opacity = '0';
+  }, 2500);
 });
