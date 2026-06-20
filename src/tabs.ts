@@ -15,12 +15,26 @@ export interface TabTimes {
   creation: Record<number, number>;
 }
 
-/** The extension's own options page must never be recycled. */
+/** The extension's own settings page, matched within its chrome-extension:// URL. */
 const OPTIONS_PAGE = 'options.html';
 
-/** Tabs that count toward the limit (pinned tabs are excluded when configured). */
+/** Chrome's new-tab page stays enforced — it's the vehicle for opening new web tabs. */
+const NEW_TAB_PAGE = /^chrome:\/\/(newtab|new-tab-page)\b/i;
+
+/**
+ * URLs exempt from the tab limit entirely: the extension's own settings page and
+ * Chrome's internal pages (chrome://…), excluding the new-tab page. Exempt tabs
+ * never count toward the limit and are never recycled.
+ */
+export function isExemptUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  if (url.includes(OPTIONS_PAGE)) return true;
+  return /^chrome:\/\//i.test(url) && !NEW_TAB_PAGE.test(url);
+}
+
+/** Tabs that count toward the limit (exempt tabs, and pinned tabs when configured, are excluded). */
 export function relevantTabs(tabs: TabInfo[], settings: Settings): TabInfo[] {
-  return settings.excludePinned ? tabs.filter((t) => !t.pinned) : tabs;
+  return tabs.filter((t) => !isExemptUrl(t.url) && !(settings.excludePinned && t.pinned));
 }
 
 export function countRelevantTabs(tabs: TabInfo[], settings: Settings): number {
@@ -44,11 +58,8 @@ export function selectOldestTab(
   times: TabTimes,
   settings: Settings,
 ): TabInfo | null {
-  let candidates = tabs.filter((t) => t.id !== newTabId);
-  if (settings.excludePinned) {
-    candidates = candidates.filter((t) => !t.pinned);
-  }
-  candidates = candidates.filter((t) => !t.url?.includes(OPTIONS_PAGE));
+  // Recyclable tabs are exactly those that count toward the limit, minus the new one.
+  const candidates = relevantTabs(tabs, settings).filter((t) => t.id !== newTabId);
   if (candidates.length === 0) return null;
 
   const keyOf = (t: TabInfo): number =>

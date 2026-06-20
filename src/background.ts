@@ -1,6 +1,6 @@
 import type { BacklogItem, Settings } from './types';
 import type { TabInfo } from './tabs';
-import { isOverLimit, isStashableUrl, selectOldestTab } from './tabs';
+import { isExemptUrl, isOverLimit, isStashableUrl, selectOldestTab } from './tabs';
 import { loadSettings } from './settings';
 import * as state from './state';
 import { addToBacklog, BACKLOG_KEY, getBacklog } from './backlog';
@@ -62,6 +62,10 @@ chrome.tabs.onCreated.addListener((tab) => {
 async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
   if (tab.id == null) return;
   await state.recordCreated(tab.id);
+
+  // The extension's own settings page and Chrome's internal pages are exempt from
+  // the limit — never block them, even when at capacity.
+  if (isExemptUrl(tab.url || tab.pendingUrl)) return;
 
   const settings = await loadSettings();
   const tabs = (await queryScopedTabs(settings, tab.windowId))

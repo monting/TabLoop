@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   countRelevantTabs,
+  isExemptUrl,
   isOverLimit,
   isStashableUrl,
   selectOldestTab,
@@ -54,6 +55,38 @@ test('pinned tabs do not push the count over the limit when excluded', () => {
   assert.equal(isOverLimit(tabs, s), false);
 });
 
+test('isExemptUrl exempts the settings page and chrome:// pages, but not the new-tab page', () => {
+  assert.equal(isExemptUrl('chrome-extension://abc/src/options.html'), true);
+  assert.equal(isExemptUrl('chrome://settings/'), true);
+  assert.equal(isExemptUrl('chrome://extensions/'), true);
+  assert.equal(isExemptUrl('chrome://newtab/'), false);
+  assert.equal(isExemptUrl('chrome://new-tab-page/'), false);
+  assert.equal(isExemptUrl('https://example.com'), false);
+  assert.equal(isExemptUrl('about:blank'), false);
+  assert.equal(isExemptUrl(undefined), false);
+});
+
+test('exempt tabs do not count toward the limit', () => {
+  const tabs = [
+    tab(1),
+    tab(2, { url: 'chrome://settings/' }),
+    tab(3, { url: 'chrome-extension://abc/src/options.html' }),
+  ];
+  assert.equal(countRelevantTabs(tabs, baseSettings), 1);
+});
+
+test('exempt tabs never push the count over the limit', () => {
+  const s = { ...baseSettings, maxTabs: 2 };
+  const tabs = [tab(1), tab(2), tab(3, { url: 'chrome://extensions/' })];
+  assert.equal(isOverLimit(tabs, s), false);
+});
+
+test('the new-tab page still counts toward the limit', () => {
+  const s = { ...baseSettings, maxTabs: 2 };
+  const tabs = [tab(1), tab(2), tab(3, { url: 'chrome://newtab/' })];
+  assert.equal(isOverLimit(tabs, s), true);
+});
+
 test('selectOldestTab picks the earliest creation time, ignoring the new tab', () => {
   const tabs = [tab(1), tab(2), tab(3)];
   const oldest = selectOldestTab(tabs, 3, times({ 1: 100, 2: 50, 3: 200 }), {
@@ -89,6 +122,18 @@ test('selectOldestTab never returns the options page', () => {
   const tabs = [tab(1, { url: 'chrome-extension://abc/src/options.html' }), tab(2), tab(3)];
   const oldest = selectOldestTab(tabs, 3, times({ 1: 1, 2: 100, 3: 200 }), baseSettings);
   assert.equal(oldest?.id, 2);
+});
+
+test('selectOldestTab never returns a chrome:// page', () => {
+  const tabs = [tab(1, { url: 'chrome://settings/' }), tab(2), tab(3)];
+  const oldest = selectOldestTab(tabs, 3, times({ 1: 1, 2: 100, 3: 200 }), baseSettings);
+  assert.equal(oldest?.id, 2);
+});
+
+test('selectOldestTab may recycle the new-tab page', () => {
+  const tabs = [tab(1, { url: 'chrome://newtab/' }), tab(2), tab(3)];
+  const oldest = selectOldestTab(tabs, 3, times({ 1: 1, 2: 100, 3: 200 }), baseSettings);
+  assert.equal(oldest?.id, 1);
 });
 
 test('selectOldestTab returns null when nothing is recyclable', () => {
