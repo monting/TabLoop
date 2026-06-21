@@ -8,6 +8,7 @@ const chromeListeners = {
   onStartup: [] as Function[],
   onRemoved: [] as Function[],
   onCreated: [] as Function[],
+  onUpdated: [] as Function[],
   onMessage: [] as Function[],
   storageChanged: [] as Function[],
 };
@@ -54,6 +55,11 @@ global.chrome = {
         chromeListeners.onCreated.push(cb);
       },
     },
+    onUpdated: {
+      addListener(cb: Function) {
+        chromeListeners.onUpdated.push(cb);
+      },
+    },
     query: async (queryInfo: any) => {
       // Simulate existing tabs.
       // tab 1 is the oldest, located in window 1.
@@ -74,6 +80,7 @@ global.chrome = {
     update: async (tabId: number, updateProperties: any) => {
       callLog.push({ method: 'update', args: [tabId, updateProperties] });
     },
+    create: async () => ({ id: 99, windowId: 1 }),
   },
   windows: {
     create: async () => {},
@@ -323,6 +330,14 @@ test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the n
     resolveWindowsUpdate = resolve;
   });
   
+  // The catch-path logs via console.warn; capture it so it doesn't print as a scary
+  // "Error:" line during an otherwise-passing run (and assert it actually fires).
+  const warnings: string[] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args.map((a) => String(a)).join(' '));
+  };
+
   // Temporarily override move to throw an error
   const originalMove = global.chrome.tabs.move;
   global.chrome.tabs.move = async (tabId: number, moveProperties: any) => {
@@ -364,6 +379,7 @@ test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the n
   global.chrome.tabs.move = originalMove;
   global.chrome.windows.update = originalWindowsUpdate;
   global.chrome.tabs.query = originalQuery;
+  console.warn = originalWarn;
   mockStorage.sync.settings = originalSettings;
 
   // Verify the sequence of calls
@@ -384,6 +400,11 @@ test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the n
     method: 'windows.update',
     args: [1, { focused: true }],
   }, 'Expected windows.update to focus the original window (1)');
+
+  assert.ok(
+    warnings.some((w) => w.includes('Could not move oldest tab to new window')),
+    'Expected a warning to be logged when the cross-profile move fails',
+  );
 });
 
 test('updateBadge sets negative badge text when over limit', async () => {
@@ -429,6 +450,73 @@ test('updateBadge sets negative badge text when over limit', async () => {
   mockStorage.sync.settings = originalSettings;
 
   assert.equal(badgeText, '-1', 'Badge text should reflect exceeded tabs as a negative count');
+});
+
+test('a tab opened via the escape hatch bypasses the limit and is not recycled', async () => {
+  const originalSettings = { ...mockStorage.sync.settings };
+  mockStorage.sync.settings.maxTabs = 2; // query returns 3 tabs => over limit
+  callLog.length = 0;
+
+  // The escape message creates a tab (mock returns id 99); register the intent.
+  const onMessage = chromeListeners.onMessage[0];
+  onMessage('escape-hatch-tab');
+  // Let chrome.tabs.create resolve so id 99 is recorded as an escape tab.
+  await new Promise((r) => setTimeout(r, 0));
+
+  // Its onCreated then fires; handleCreated must let it through untouched.
+  const onCreated = chromeListeners.onCreated[0];
+  onCreated({ id: 99, pinned: false, windowId: 1, url: '' });
+  await new Promise((r) => setTimeout(r, 10));
+
+  mockStorage.sync.settings = originalSettings;
+
+  const recycling = callLog.filter((c) => ['move', 'remove', 'update'].includes(c.method));
+  assert.deepEqual(recycling, [], 'Escape tab must not trigger any recycling');
+});
+
+test('an unrelated tab created while an escape is in-flight is still enforced', async () => {
+  const originalSettings = { ...mockStorage.sync.settings };
+  mockStorage.sync.settings.maxTabs = 2;
+  callLog.length = 0;
+
+  // Hold the escape creation open so it is still in-flight when the other tab arrives.
+  let resolveCreate: ((v: any) => void) | null = null;
+  const originalCreate = global.chrome.tabs.create;
+  global.chrome.tabs.create = () =>
+    new Promise((res) => {
+      resolveCreate = res;
+    }) as any;
+
+  let resolveWindowsUpdate: (() => void) | null = null;
+  const windowsUpdatePromise = new Promise<void>((resolve) => {
+    resolveWindowsUpdate = resolve;
+  });
+  const originalWindowsUpdate = global.chrome.windows.update;
+  global.chrome.windows.update = async (windowId: number, updateProperties: any) => {
+    callLog.push({ method: 'windows.update', args: [windowId, updateProperties] });
+    if (resolveWindowsUpdate) resolveWindowsUpdate();
+  };
+
+  const onMessage = chromeListeners.onMessage[0];
+  onMessage('escape-hatch-tab'); // create stays pending (resolveCreate not called yet)
+
+  // An unrelated, over-limit tab is created before the escape resolves.
+  const onCreated = chromeListeners.onCreated[0];
+  onCreated({ id: 7, pinned: false, windowId: 1, url: '' });
+  await new Promise((r) => setTimeout(r, 0)); // let handleCreated(7) reach its await
+
+  // Now the escape creation finishes (id 88), but tab 7 must still be recycled.
+  if (resolveCreate) resolveCreate({ id: 88, windowId: 1 });
+  await windowsUpdatePromise;
+
+  global.chrome.tabs.create = originalCreate;
+  global.chrome.windows.update = originalWindowsUpdate;
+  mockStorage.sync.settings = originalSettings;
+
+  assert.ok(
+    callLog.some((c) => c.method === 'remove' && c.args[0] === 7),
+    'The unrelated tab (7) should be recycled, not exempted by the pending escape',
+  );
 });
 
 

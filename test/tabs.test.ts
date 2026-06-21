@@ -64,6 +64,8 @@ test('isExemptUrl exempts the settings page and chrome:// pages, but not the new
   assert.equal(isExemptUrl('chrome://newtab/'), false);
   assert.equal(isExemptUrl('chrome://new-tab-page/'), false);
   assert.equal(isExemptUrl('https://example.com'), false);
+  // A web page whose path merely contains "options.html" must NOT be exempted.
+  assert.equal(isExemptUrl('https://example.com/options.html'), false);
   assert.equal(isExemptUrl('about:blank'), false);
   assert.equal(isExemptUrl(undefined), false);
 });

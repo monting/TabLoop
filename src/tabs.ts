@@ -15,8 +15,11 @@ export interface TabTimes {
   creation: Record<number, number>;
 }
 
-/** The extension's own settings page, matched within its chrome-extension:// URL. */
-const OPTIONS_PAGE = 'options.html';
+/**
+ * The extension's own settings page. Anchored to the chrome-extension:// origin so
+ * arbitrary web pages whose path merely contains "options.html" are NOT exempted.
+ */
+const OPTIONS_PAGE = /^chrome-extension:\/\/[^/]+\/.*options\.html/i;
 
 /** Chrome's new-tab page stays enforced — it's the vehicle for opening new web tabs. */
 const NEW_TAB_PAGE = /^chrome:\/\/(newtab|new-tab-page)/i;
@@ -28,7 +31,7 @@ const NEW_TAB_PAGE = /^chrome:\/\/(newtab|new-tab-page)/i;
  */
 export function isExemptUrl(url: string | undefined): boolean {
   if (!url) return false;
-  if (url.includes(OPTIONS_PAGE)) return true;
+  if (OPTIONS_PAGE.test(url)) return true;
   return /^chrome:\/\//i.test(url) && !NEW_TAB_PAGE.test(url);
 }
 

@@ -65,7 +65,24 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // ---------------------------------------------------------------------------
 
 let queue: Promise<void> = Promise.resolve();
-let escapeNextTab = false;
+
+// Tabs opened via the escape hatch must bypass the limit. A tab's id is only known
+// once chrome.tabs.create resolves, and its onCreated event may fire first — so we
+// track the in-flight creations, have handleCreated await them, then match by the
+// concrete tab id. This avoids a one-shot flag being consumed by an unrelated tab
+// opened around the same moment (or getting stuck set if a create fails).
+const escapeTabIds = new Set<number>();
+const escapeCreations = new Set<Promise<void>>();
+
+function noteEscape(idPromise: Promise<number | undefined>): void {
+  const p = idPromise
+    .then((id) => {
+      if (id != null) escapeTabIds.add(id);
+    })
+    .catch(() => {});
+  escapeCreations.add(p);
+  void p.finally(() => escapeCreations.delete(p));
+}
 
 chrome.tabs.onCreated.addListener((tab) => {
   queue = queue
@@ -75,11 +92,9 @@ chrome.tabs.onCreated.addListener((tab) => {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message === 'escape-hatch' || message === 'escape-hatch-tab') {
-    escapeNextTab = true;
-    void chrome.tabs.create({});
+    noteEscape(chrome.tabs.create({}).then((t) => t.id));
   } else if (message === 'escape-hatch-window') {
-    escapeNextTab = true;
-    void chrome.windows.create({});
+    noteEscape(chrome.windows.create({}).then((w) => w?.tabs?.[0]?.id));
   }
 });
 
@@ -87,10 +102,10 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
   if (tab.id == null) return;
   await state.recordCreated(tab.id);
 
-  if (escapeNextTab) {
-    escapeNextTab = false;
-    return;
-  }
+  // Wait for any in-flight escape-hatch creations to register their tab id, then
+  // let the matching tab through untouched.
+  if (escapeCreations.size) await Promise.allSettled(escapeCreations);
+  if (escapeTabIds.delete(tab.id)) return;
 
   // The extension's own settings page and Chrome's internal pages are exempt from
   // the limit — never block them, even when at capacity.
@@ -167,11 +182,11 @@ async function updateBadge(): Promise<void> {
       list.push(t);
       byWindow.set(t.windowId, list);
     }
-    slotsLeft = Math.min(
-      ...Array.from(byWindow.values()).map(
-        (wTabs) => settings.maxTabs - countRelevantTabs(wTabs, settings),
-      ),
+    const perWindowSlots = Array.from(byWindow.values()).map(
+      (wTabs) => settings.maxTabs - countRelevantTabs(wTabs, settings),
     );
+    // With no windows open, Math.min() would yield Infinity; fall back to a full limit.
+    slotsLeft = perWindowSlots.length ? Math.min(...perWindowSlots) : settings.maxTabs;
   } else {
     slotsLeft = settings.maxTabs - countRelevantTabs(allTabs, settings);
   }
@@ -184,6 +199,14 @@ async function updateBadge(): Promise<void> {
 // Refresh when tabs come or go.
 chrome.tabs.onCreated.addListener(() => void updateBadge());
 chrome.tabs.onRemoved.addListener(() => void updateBadge());
+// A tab navigating to/from an exempt page, or being (un)pinned, changes the relevant
+// count without a create/remove — refresh on those too. Other onUpdated noise
+// (loading state, favicon, title) is ignored to avoid needless work.
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+  if (changeInfo.url !== undefined || changeInfo.pinned !== undefined) {
+    void updateBadge();
+  }
+});
 
 // Refresh when settings change (maxTabs, excludePinned, etc.).
 chrome.storage.onChanged.addListener((changes, area) => {
