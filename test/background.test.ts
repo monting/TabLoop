@@ -374,4 +374,51 @@ test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the n
   }, 'Expected update to still be called third to activate the oldest tab (1)');
 });
 
+test('updateBadge sets negative badge text when over limit', async () => {
+  // Save original settings
+  const originalSettings = { ...mockStorage.sync.settings };
+  mockStorage.sync.settings.maxTabs = 2; // set limit to 2
+  mockStorage.sync.settings.excludePinned = true;
+  mockStorage.sync.settings.excludeIncognito = true;
+  
+  let badgeText = '';
+  let resolveBadge: (() => void) | null = null;
+  const badgePromise = new Promise<void>((resolve) => {
+    resolveBadge = resolve;
+  });
+
+  const originalSetBadgeText = global.chrome.action.setBadgeText;
+  global.chrome.action.setBadgeText = async (details: any) => {
+    badgeText = details.text;
+    if (resolveBadge) resolveBadge();
+  };
+
+  // Mock chrome.tabs.query to return 3 tabs (which is 1 over the limit of 2)
+  const originalQuery = global.chrome.tabs.query;
+  global.chrome.tabs.query = async (queryInfo: any) => {
+    return [
+      { id: 1, pinned: false, incognito: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+      { id: 2, pinned: false, incognito: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+      { id: 3, pinned: false, incognito: false, windowId: 1, url: 'https://yahoo.com', lastAccessed: 300 },
+    ];
+  };
+
+  // Trigger updateBadge indirectly via storage onChanged listener
+  const storageListener = chromeListeners.storageChanged[0];
+  if (storageListener) {
+    storageListener({ settings: {} }, 'sync');
+  }
+
+  // Wait for the badge text to be set
+  await badgePromise;
+
+  // Restore
+  global.chrome.action.setBadgeText = originalSetBadgeText;
+  global.chrome.tabs.query = originalQuery;
+  mockStorage.sync.settings = originalSettings;
+
+  assert.equal(badgeText, '-1', 'Badge text should reflect exceeded tabs as a negative count');
+});
+
+
 

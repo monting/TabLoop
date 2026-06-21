@@ -169,8 +169,6 @@ async function updateBadge(): Promise<void> {
     slotsLeft = settings.maxTabs - countRelevantTabs(allTabs, settings);
   }
 
-  slotsLeft = Math.max(slotsLeft, 0);
-
   const color = slotsLeft <= 3 ? "#ef4444" : "#22c55e"; // red when tight, green otherwise
   await chrome.action.setBadgeBackgroundColor({ color });
   await chrome.action.setBadgeText({ text: String(slotsLeft) });
