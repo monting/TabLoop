@@ -20,7 +20,7 @@ export interface TabTimes {
 const OPTIONS_PAGE = 'options.html';
 
 /** Chrome's new-tab page stays enforced — it's the vehicle for opening new web tabs. */
-const NEW_TAB_PAGE = /^chrome:\/\/(newtab|new-tab-page)\b/i;
+const NEW_TAB_PAGE = /^chrome:\/\/(newtab|new-tab-page)/i;
 
 /**
  * URLs exempt from the tab limit entirely: the extension's own settings page and

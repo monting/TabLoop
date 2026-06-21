@@ -238,3 +238,140 @@ test('setStash prunes oldest items to stay under 8KB limit when using sync stora
   assert.ok(stored.length < 50, `Expected item count (${stored.length}) to be pruned below 50`);
   assert.equal(stored[0].time, 49); // Newest should still be there
 });
+
+test('when a new tab triggers recycling but is missing from query results (race condition), it is still correctly recycled', async () => {
+  // Save original settings
+  const originalSettings = { ...mockStorage.sync.settings };
+  mockStorage.sync.settings.maxTabs = 2;
+
+  // Clear call log
+  callLog.length = 0;
+  
+  // Set up a custom resolve promise for the update call
+  let resolveUpdate: (() => void) | null = null;
+  const updatePromise = new Promise<void>((resolve) => {
+    resolveUpdate = resolve;
+  });
+  
+  // Temporarily override update to resolve our promise
+  const originalUpdate = global.chrome.tabs.update;
+  global.chrome.tabs.update = async (tabId: number, updateProperties: any) => {
+    callLog.push({ method: 'update', args: [tabId, updateProperties] });
+    if (resolveUpdate) resolveUpdate();
+  };
+
+  // Temporarily override query to NOT include the new tab (tab 4)
+  const originalQuery = global.chrome.tabs.query;
+  global.chrome.tabs.query = async (queryInfo: any) => {
+    return [
+      { id: 1, pinned: false, incognito: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+      { id: 2, pinned: false, incognito: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+    ];
+  };
+
+  const onCreatedListener = chromeListeners.onCreated[0];
+  
+  // Trigger the listener for a new tab (tab 4, in window 1)
+  onCreatedListener({
+    id: 4,
+    pinned: false,
+    incognito: false,
+    windowId: 1,
+    url: 'chrome://newtab/',
+    lastAccessed: 400,
+  });
+
+  await updatePromise;
+
+  // Restore overrides and settings
+  global.chrome.tabs.query = originalQuery;
+  global.chrome.tabs.update = originalUpdate;
+  mockStorage.sync.settings = originalSettings;
+
+  // Verify the sequence of calls: it should still have recycled
+  assert.equal(callLog.length, 2, 'Expected exactly 2 tab operations (no move needed since windowId is same)');
+  assert.deepEqual(callLog[0], {
+    method: 'remove',
+    args: [4],
+  }, 'Expected remove to be called to close the new empty tab (4)');
+  assert.deepEqual(callLog[1], {
+    method: 'update',
+    args: [1, { active: true }],
+  }, 'Expected update to be called to activate the oldest tab (1)');
+});
+
+test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the new tab is still closed and the oldest tab is updated', async () => {
+  // Save original settings
+  const originalSettings = { ...mockStorage.sync.settings };
+  mockStorage.sync.settings.maxTabs = 2;
+
+  // Clear call log
+  callLog.length = 0;
+  
+  // Set up a custom resolve promise for the update call
+  let resolveUpdate: (() => void) | null = null;
+  const updatePromise = new Promise<void>((resolve) => {
+    resolveUpdate = resolve;
+  });
+  
+  // Temporarily override move to throw an error
+  const originalMove = global.chrome.tabs.move;
+  global.chrome.tabs.move = async (tabId: number, moveProperties: any) => {
+    callLog.push({ method: 'move', args: [tabId, moveProperties] });
+    throw new Error('Tabs can only be moved between windows in the same profile.');
+  };
+
+  // Temporarily override update to resolve our promise
+  const originalUpdate = global.chrome.tabs.update;
+  global.chrome.tabs.update = async (tabId: number, updateProperties: any) => {
+    callLog.push({ method: 'update', args: [tabId, updateProperties] });
+    if (resolveUpdate) resolveUpdate();
+  };
+
+  // Override query to return a tab in window 1, while the new tab is in window 2 (so a move is attempted)
+  const originalQuery = global.chrome.tabs.query;
+  global.chrome.tabs.query = async (queryInfo: any) => {
+    return [
+      { id: 1, pinned: false, incognito: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+      { id: 2, pinned: false, incognito: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+      { id: 3, pinned: false, incognito: false, windowId: 2, url: 'chrome://newtab/', lastAccessed: 300 },
+    ];
+  };
+
+  const onCreatedListener = chromeListeners.onCreated[0];
+  
+  // Trigger the listener for the new tab (tab 3, in window 2)
+  onCreatedListener({
+    id: 3,
+    pinned: false,
+    incognito: false,
+    windowId: 2,
+    url: 'chrome://newtab/',
+    lastAccessed: 300,
+  });
+
+  await updatePromise;
+
+  // Restore overrides and settings
+  global.chrome.tabs.move = originalMove;
+  global.chrome.tabs.update = originalUpdate;
+  global.chrome.tabs.query = originalQuery;
+  mockStorage.sync.settings = originalSettings;
+
+  // Verify the sequence of calls
+  assert.equal(callLog.length, 3, 'Expected exactly 3 tab operations');
+  assert.deepEqual(callLog[0], {
+    method: 'move',
+    args: [1, { windowId: 2, index: -1 }],
+  }, 'Expected move to be called first and fail');
+  assert.deepEqual(callLog[1], {
+    method: 'remove',
+    args: [3],
+  }, 'Expected remove to still be called second to close the new empty tab (3)');
+  assert.deepEqual(callLog[2], {
+    method: 'update',
+    args: [1, { active: true }],
+  }, 'Expected update to still be called third to activate the oldest tab (1)');
+});
+
+

@@ -102,6 +102,14 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
     .map(toTabInfo)
     .filter((t): t is TabInfo => t !== null);
 
+  // Ensure the newly created tab is counted, in case chrome.tabs.query missed it due to a race condition
+  if (!tabs.some((t) => t.id === tab.id)) {
+    const newTabInfo = toTabInfo(tab);
+    if (newTabInfo) {
+      tabs.push(newTabInfo);
+    }
+  }
+
   if (!isOverLimit(tabs, settings)) return;
 
   const times = await state.getTimes();
@@ -117,10 +125,18 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
   }
 
   if (oldest.windowId !== tab.windowId) {
-    await chrome.tabs.move(oldest.id, { windowId: tab.windowId, index: -1 });
+    try {
+      await chrome.tabs.move(oldest.id, { windowId: tab.windowId, index: -1 });
+    } catch (err) {
+      console.warn("TabLoop: Could not move oldest tab to new window:", err);
+    }
   }
   await chrome.tabs.remove(tab.id);
-  await chrome.tabs.update(oldest.id, { active: true });
+  try {
+    await chrome.tabs.update(oldest.id, { active: true });
+  } catch (err) {
+    console.warn("TabLoop: Could not activate oldest tab:", err);
+  }
 }
 
 // ---------------------------------------------------------------------------
