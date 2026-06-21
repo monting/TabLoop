@@ -20,7 +20,6 @@
 body {
   margin: 0;
   width: 350px;
-  height: 450px;
   background-color: var(--bg-color);
   background-image:
     radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
@@ -34,7 +33,6 @@ body {
 
 #app {
   width: 100%;
-  height: 100%;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -174,8 +172,6 @@ body {
 
 /* Stash list */
 .stash {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   padding: 16px;
@@ -212,8 +208,7 @@ body {
   list-style: none;
   margin: 0;
   padding: 0;
-  flex: 1;
-  min-height: 0;
+  max-height: 220px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -225,6 +220,13 @@ body {
   align-items: center;
   gap: 8px;
   padding: 6px 6px 6px 0;
+}
+
+.stash-item .favicon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 3px;
 }
 
 .stash-item .url {

@@ -114,6 +114,13 @@ function render(state: PopupState): void {
   }
 }
 
+function getFaviconUrl(pageUrl: string): string {
+  const url = new URL(chrome.runtime.getURL('/_favicon/'));
+  url.searchParams.set('pageUrl', pageUrl);
+  url.searchParams.set('size', '16');
+  return url.toString();
+}
+
 function renderItem(item: StashItem, atLimit: boolean): HTMLLIElement {
   const li = document.createElement('li');
   li.className = 'stash-item';
@@ -128,6 +135,11 @@ function renderItem(item: StashItem, atLimit: boolean): HTMLLIElement {
     restore.title = 'Stash or close a tab to make room first';
   }
 
+  const favicon = document.createElement('img');
+  favicon.className = 'favicon';
+  favicon.src = getFaviconUrl(item.url);
+  favicon.alt = '';
+
   const label = document.createElement('span');
   label.className = 'url';
   label.textContent = item.title?.trim() || formatUrl(item.url);
@@ -140,7 +152,7 @@ function renderItem(item: StashItem, atLimit: boolean): HTMLLIElement {
   remove.dataset.act = 'remove';
   remove.title = 'Remove from stash';
 
-  li.append(restore, label, remove);
+  li.append(restore, favicon, label, remove);
   return li;
 }
 
