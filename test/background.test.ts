@@ -60,9 +60,9 @@ global.chrome = {
       // tab 2 is another tab, located in window 1.
       // tab 3 is the new tab, located in window 2.
       return [
-        { id: 1, pinned: false, incognito: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
-        { id: 2, pinned: false, incognito: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
-        { id: 3, pinned: false, incognito: false, windowId: 2, url: 'chrome://newtab/', lastAccessed: 300 },
+        { id: 1, pinned: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+        { id: 2, pinned: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+        { id: 3, pinned: false, windowId: 2, url: 'chrome://newtab/', lastAccessed: 300 },
       ];
     },
     remove: async (tabId: number) => {
@@ -125,7 +125,6 @@ mockStorage.sync.settings = {
   limitScope: 'global',
   oldestDefinition: 'lru',
   excludePinned: true,
-  excludeIncognito: true,
   syncStash: false,
 };
 
@@ -141,7 +140,6 @@ test('when a new tab in a new window triggers recycling, the oldest tab is moved
   onCreatedListener({
     id: 3,
     pinned: false,
-    incognito: false,
     windowId: 2,
     url: 'chrome://newtab/',
     lastAccessed: 300,
@@ -179,7 +177,6 @@ test('getStash and setStash use storage.local when syncStash is false', async ()
     limitScope: 'global',
     oldestDefinition: 'lru',
     excludePinned: true,
-    excludeIncognito: true,
     syncStash: false,
   };
 
@@ -200,7 +197,6 @@ test('getStash and setStash use storage.sync when syncStash is true', async () =
     limitScope: 'global',
     oldestDefinition: 'lru',
     excludePinned: true,
-    excludeIncognito: true,
     syncStash: true,
   };
 
@@ -221,7 +217,6 @@ test('setStash prunes oldest items to stay under 8KB limit when using sync stora
     limitScope: 'global',
     oldestDefinition: 'lru',
     excludePinned: true,
-    excludeIncognito: true,
     syncStash: true,
   };
 
@@ -275,8 +270,8 @@ test('when a new tab triggers recycling but is missing from query results (race 
   const originalQuery = global.chrome.tabs.query;
   global.chrome.tabs.query = async (queryInfo: any) => {
     return [
-      { id: 1, pinned: false, incognito: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
-      { id: 2, pinned: false, incognito: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+      { id: 1, pinned: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+      { id: 2, pinned: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
     ];
   };
 
@@ -286,7 +281,6 @@ test('when a new tab triggers recycling but is missing from query results (race 
   onCreatedListener({
     id: 4,
     pinned: false,
-    incognito: false,
     windowId: 1,
     url: 'chrome://newtab/',
     lastAccessed: 400,
@@ -347,9 +341,9 @@ test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the n
   const originalQuery = global.chrome.tabs.query;
   global.chrome.tabs.query = async (queryInfo: any) => {
     return [
-      { id: 1, pinned: false, incognito: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
-      { id: 2, pinned: false, incognito: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
-      { id: 3, pinned: false, incognito: false, windowId: 2, url: 'chrome://newtab/', lastAccessed: 300 },
+      { id: 1, pinned: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+      { id: 2, pinned: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+      { id: 3, pinned: false, windowId: 2, url: 'chrome://newtab/', lastAccessed: 300 },
     ];
   };
 
@@ -359,7 +353,6 @@ test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the n
   onCreatedListener({
     id: 3,
     pinned: false,
-    incognito: false,
     windowId: 2,
     url: 'chrome://newtab/',
     lastAccessed: 300,
@@ -398,7 +391,6 @@ test('updateBadge sets negative badge text when over limit', async () => {
   const originalSettings = { ...mockStorage.sync.settings };
   mockStorage.sync.settings.maxTabs = 2; // set limit to 2
   mockStorage.sync.settings.excludePinned = true;
-  mockStorage.sync.settings.excludeIncognito = true;
   
   let badgeText = '';
   let resolveBadge: (() => void) | null = null;
@@ -416,9 +408,9 @@ test('updateBadge sets negative badge text when over limit', async () => {
   const originalQuery = global.chrome.tabs.query;
   global.chrome.tabs.query = async (queryInfo: any) => {
     return [
-      { id: 1, pinned: false, incognito: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
-      { id: 2, pinned: false, incognito: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
-      { id: 3, pinned: false, incognito: false, windowId: 1, url: 'https://yahoo.com', lastAccessed: 300 },
+      { id: 1, pinned: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+      { id: 2, pinned: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+      { id: 3, pinned: false, windowId: 1, url: 'https://yahoo.com', lastAccessed: 300 },
     ];
   };
 

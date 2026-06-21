@@ -18,12 +18,11 @@ const baseSettings: Settings = {
   limitScope: 'global',
   oldestDefinition: 'creation',
   excludePinned: true,
-  excludeIncognito: false,
   syncStash: false,
 };
 
 function tab(id: number, extra: Partial<TabInfo> = {}): TabInfo {
-  return { id, pinned: false, incognito: false, windowId: 1, ...extra };
+  return { id, pinned: false, windowId: 1, ...extra };
 }
 
 function times(creation: Record<number, number> = {}): TabTimes {
@@ -32,10 +31,6 @@ function times(creation: Record<number, number> = {}): TabTimes {
 
 test('the default configuration recycles the least-recently-used tab', () => {
   assert.equal(DEFAULT_SETTINGS.oldestDefinition, 'lru');
-});
-
-test('incognito tabs are exempt from the limit by default', () => {
-  assert.equal(DEFAULT_SETTINGS.excludeIncognito, true);
 });
 
 test('countRelevantTabs counts every tab when excludePinned is off', () => {
@@ -60,21 +55,7 @@ test('pinned tabs do not push the count over the limit when excluded', () => {
   assert.equal(isOverLimit(tabs, s), false);
 });
 
-test('incognito tabs count toward the limit when excludeIncognito is off', () => {
-  const tabs = [tab(1), tab(2, { incognito: true }), tab(3)];
-  assert.equal(countRelevantTabs(tabs, { ...baseSettings, excludeIncognito: false }), 3);
-});
 
-test('countRelevantTabs excludes incognito tabs when configured', () => {
-  const tabs = [tab(1), tab(2, { incognito: true }), tab(3)];
-  assert.equal(countRelevantTabs(tabs, { ...baseSettings, excludeIncognito: true }), 2);
-});
-
-test('incognito tabs do not push the count over the limit when excluded', () => {
-  const s = { ...baseSettings, maxTabs: 2, excludeIncognito: true };
-  const tabs = [tab(1), tab(2), tab(3, { incognito: true }), tab(4, { incognito: true })];
-  assert.equal(isOverLimit(tabs, s), false);
-});
 
 test('isExemptUrl exempts the settings page and chrome:// pages, but not the new-tab page', () => {
   assert.equal(isExemptUrl('chrome-extension://abc/src/options.html'), true);
@@ -139,12 +120,7 @@ test('selectOldestTab never returns a pinned tab when excludePinned is set', () 
   assert.equal(oldest?.id, 2);
 });
 
-test('selectOldestTab never returns an incognito tab when excludeIncognito is set', () => {
-  const s = { ...baseSettings, excludeIncognito: true };
-  const tabs = [tab(1, { incognito: true }), tab(2), tab(3)];
-  const oldest = selectOldestTab(tabs, 3, times({ 1: 1, 2: 100, 3: 200 }), s);
-  assert.equal(oldest?.id, 2);
-});
+
 
 test('selectOldestTab never returns the options page', () => {
   const tabs = [tab(1, { url: 'chrome-extension://abc/src/options.html' }), tab(2), tab(3)];

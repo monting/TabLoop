@@ -3,7 +3,6 @@ export interface Settings {
   limitScope: 'global' | 'per-window';
   oldestDefinition: 'creation' | 'lru';
   excludePinned: boolean;
-  excludeIncognito: boolean;
   syncStash: boolean;
 }
 

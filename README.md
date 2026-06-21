@@ -10,7 +10,6 @@ TabLoop is a modern Chrome Extension designed to help you conquer tab hoarding. 
 - **Live Tab Counter**: The toolbar popup shows your current tab count against your limit at a glance.
 - **Pinned Tab Protection**: Exclude your important pinned tabs from being touched (and from counting toward the limit).
 - **System-Page Exemption**: Chrome's internal pages (`chrome://…`) and TabLoop's own settings page never count toward your limit and are never recycled — only the new-tab page stays enforced.
-- **Incognito Exemption**: Keep private browsing separate — tabs in incognito windows can be excluded from the limit (and from recycling). Enabled by default.
 - **Premium Interface**: Configure your preferences via a sleek, dark-glassmorphism options page.
 
 ## How to Run Locally for Development

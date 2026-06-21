@@ -24,7 +24,7 @@ let currentState: PopupState | null = null;
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
-  return { id: tab.id, pinned: tab.pinned, incognito: tab.incognito, url: tab.url, windowId: tab.windowId };
+  return { id: tab.id, pinned: tab.pinned, url: tab.url, windowId: tab.windowId };
 }
 
 async function readState(): Promise<PopupState> {

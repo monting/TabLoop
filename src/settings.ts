@@ -5,7 +5,6 @@ export const DEFAULT_SETTINGS: Settings = {
   limitScope: 'global',
   oldestDefinition: 'lru',
   excludePinned: true,
-  excludeIncognito: true,
   syncStash: false,
 };
 

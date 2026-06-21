@@ -7,7 +7,6 @@ const limitScopeSelect = document.getElementById('limitScope') as HTMLSelectElem
 const oldestDefinitionSelect = document.getElementById('oldestDefinition') as HTMLSelectElement;
 const syncStashCheckbox = document.getElementById('syncStash') as HTMLInputElement;
 const excludePinnedCheckbox = document.getElementById('excludePinned') as HTMLInputElement;
-const excludeIncognitoCheckbox = document.getElementById('excludeIncognito') as HTMLInputElement;
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const statusText = document.getElementById('status') as HTMLSpanElement;
 
@@ -18,7 +17,6 @@ void loadSettings().then((settings) => {
   oldestDefinitionSelect.value = settings.oldestDefinition;
   syncStashCheckbox.checked = !!settings.syncStash;
   excludePinnedCheckbox.checked = settings.excludePinned;
-  excludeIncognitoCheckbox.checked = settings.excludeIncognito;
 });
 
 function readMaxTabs(): number {
@@ -36,7 +34,6 @@ saveBtn.addEventListener('click', async () => {
     limitScope: limitScopeSelect.value as Settings['limitScope'],
     oldestDefinition: oldestDefinitionSelect.value as Settings['oldestDefinition'],
     excludePinned: excludePinnedCheckbox.checked,
-    excludeIncognito: excludeIncognitoCheckbox.checked,
     syncStash: newSyncStash,
   };
   // Reflect any clamping back to the field.

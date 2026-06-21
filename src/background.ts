@@ -16,7 +16,6 @@ function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   return {
     id: tab.id,
     pinned: tab.pinned,
-    incognito: tab.incognito,
     url: tab.url || tab.pendingUrl || undefined,
     windowId: tab.windowId,
     lastAccessed: tab.lastAccessed,
