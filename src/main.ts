@@ -1,11 +1,11 @@
-import './style.css';
-import type { Settings, StashItem } from './types';
-import type { TabInfo } from './tabs';
-import { countRelevantTabs, isStashableUrl } from './tabs';
-import { loadSettings } from './settings';
-import { addToStash, clearStash, getStash, removeFromStash } from './stash';
+import "./style.css";
+import type { Settings, StashItem } from "./types";
+import type { TabInfo } from "./tabs";
+import { countRelevantTabs, isStashableUrl } from "./tabs";
+import { loadSettings } from "./settings";
+import { addToStash, clearStash, getStash, removeFromStash } from "./stash";
 
-const app = document.querySelector<HTMLDivElement>('#app')!;
+const app = document.querySelector<HTMLDivElement>("#app")!;
 
 interface ActiveTab {
   id: number;
@@ -24,29 +24,40 @@ let currentState: PopupState | null = null;
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
-  return { id: tab.id, pinned: tab.pinned, url: tab.url, windowId: tab.windowId };
+  return {
+    id: tab.id,
+    pinned: tab.pinned,
+    url: tab.url,
+    windowId: tab.windowId,
+  };
 }
 
 async function readState(): Promise<PopupState> {
   const settings = await loadSettings();
   const rawTabs = await chrome.tabs.query(
-    settings.limitScope === 'per-window' ? { currentWindow: true } : {},
+    settings.limitScope === "per-window" ? { currentWindow: true } : {},
   );
   const tabs = rawTabs.map(toTabInfo).filter((t): t is TabInfo => t !== null);
-  const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const [active] = await chrome.tabs.query({
+    active: true,
+    currentWindow: true,
+  });
   return {
     settings,
     count: countRelevantTabs(tabs, settings),
     stash: await getStash(),
-    activeTab: active?.id != null ? { id: active.id, url: active.url, title: active.title } : null,
+    activeTab:
+      active?.id != null
+        ? { id: active.id, url: active.url, title: active.title }
+        : null,
   };
 }
 
 function formatUrl(url: string): string {
   try {
     const u = new URL(url);
-    const path = u.pathname === '/' ? '' : u.pathname;
-    return u.hostname.replace(/^www\./, '') + path;
+    const path = u.pathname === "/" ? "" : u.pathname;
+    return u.hostname.replace(/^www\./, "") + path;
   } catch {
     return url;
   }
@@ -57,7 +68,7 @@ function render(state: PopupState): void {
   const max = settings.maxTabs;
   const atLimit = count >= max;
   const ratio = max > 0 ? count / max : 0;
-  const level = ratio >= 1 ? 'over' : ratio >= 0.8 ? 'high' : 'ok';
+  const level = ratio >= 1 ? "over" : ratio >= 0.8 ? "high" : "ok";
   const remaining = Math.max(0, max - count);
   const canStash = !!activeTab && isStashableUrl(activeTab.url);
 
@@ -67,7 +78,7 @@ function render(state: PopupState): void {
         <img class="logo" src="/icon-48.png" alt="TabLoop logo" />
         <h1>TabLoop</h1>
       </div>
-      <span class="scope">${settings.limitScope === 'per-window' ? 'This window' : 'All windows'}</span>
+      <span class="scope">${settings.limitScope === "per-window" ? "This window" : "All windows"}</span>
     </div>
 
     <div class="card meter ${level}">
@@ -75,19 +86,21 @@ function render(state: PopupState): void {
       <div class="bar"><div class="bar-fill" style="width:${Math.min(100, ratio * 100)}%"></div></div>
       <p class="hint">${
         atLimit
-          ? 'At limit &mdash; stash a tab to free a slot'
-          : `${remaining} slot${remaining === 1 ? '' : 's'} remaining`
+          ? "At limit &mdash; stash a tab to free a slot"
+          : `${remaining} slot${remaining === 1 ? "" : "s"} remaining`
       }</p>
     </div>
 
-    <button class="stash-btn" data-act="stash-current"${canStash ? '' : ' disabled'} title="${
-      canStash ? 'Close this tab and save it to your Stash' : "This page can't be stashed"
-    }">Stash this tab</button>
+    <button class="stash-btn" data-act="stash-current"${canStash ? "" : " disabled"} title="${
+      canStash
+        ? "Close this tab and save it to your Stash"
+        : "This page can't be stashed"
+    }">Stash this tab to make space</button>
 
     <div class="card stash">
       <div class="stash-head">
-        <span class="stash-title">Stash${stash.length ? ` <span class="pill">${stash.length}</span>` : ''}</span>
-        ${stash.length ? '<button class="link" data-act="clear">Clear all</button>' : ''}
+        <span class="stash-title">Stash${stash.length ? ` <span class="pill">${stash.length}</span>` : ""}</span>
+        ${stash.length ? '<button class="link" data-act="clear">Clear all</button>' : ""}
       </div>
       <ul class="stash-list"></ul>
     </div>
@@ -102,18 +115,18 @@ function render(state: PopupState): void {
       <div style="display: flex; align-items: center; gap: 10px;">
         <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Escape Hatch</span>
         <div style="display: flex; gap: 6px;">
-          <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? '' : ' disabled'}>+ Tab</button>
-          <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? '' : ' disabled'}>+ Window</button>
+          <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? "" : " disabled"}>+ Tab</button>
+          <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? "" : " disabled"}>+ Window</button>
         </div>
       </div>
     </div>
   `;
 
-  const list = app.querySelector<HTMLUListElement>('.stash-list')!;
+  const list = app.querySelector<HTMLUListElement>(".stash-list")!;
   if (stash.length === 0) {
-    const empty = document.createElement('li');
-    empty.className = 'empty';
-    empty.textContent = 'Nothing stashed yet.';
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "Nothing stashed yet.";
     list.append(empty);
   } else {
     for (const item of stash) {
@@ -123,42 +136,42 @@ function render(state: PopupState): void {
 }
 
 function getFaviconUrl(pageUrl: string): string {
-  const url = new URL(chrome.runtime.getURL('/_favicon/'));
-  url.searchParams.set('pageUrl', pageUrl);
-  url.searchParams.set('size', '16');
+  const url = new URL(chrome.runtime.getURL("/_favicon/"));
+  url.searchParams.set("pageUrl", pageUrl);
+  url.searchParams.set("size", "16");
   return url.toString();
 }
 
 function renderItem(item: StashItem, atLimit: boolean): HTMLLIElement {
-  const li = document.createElement('li');
-  li.className = 'stash-item';
+  const li = document.createElement("li");
+  li.className = "stash-item";
 
-  const restore = document.createElement('button');
-  restore.className = 'restore';
-  restore.textContent = 'Restore';
+  const restore = document.createElement("button");
+  restore.className = "restore";
+  restore.textContent = "Restore";
   restore.dataset.url = item.url;
-  restore.dataset.act = 'restore';
+  restore.dataset.act = "restore";
   if (atLimit) {
     restore.disabled = true;
-    restore.title = 'Stash or close a tab to make room first';
+    restore.title = "Stash or close a tab to make room first";
   }
 
-  const favicon = document.createElement('img');
-  favicon.className = 'favicon';
+  const favicon = document.createElement("img");
+  favicon.className = "favicon";
   favicon.src = getFaviconUrl(item.url);
-  favicon.alt = '';
+  favicon.alt = "";
 
-  const label = document.createElement('span');
-  label.className = 'url';
+  const label = document.createElement("span");
+  label.className = "url";
   label.textContent = item.title?.trim() || formatUrl(item.url);
   label.title = item.url;
 
-  const remove = document.createElement('button');
-  remove.className = 'remove';
-  remove.textContent = '×';
+  const remove = document.createElement("button");
+  remove.className = "remove";
+  remove.textContent = "×";
   remove.dataset.url = item.url;
-  remove.dataset.act = 'remove';
-  remove.title = 'Remove from stash';
+  remove.dataset.act = "remove";
+  remove.title = "Remove from stash";
 
   li.append(restore, favicon, label, remove);
   return li;
@@ -169,27 +182,27 @@ async function refresh(): Promise<void> {
   render(currentState);
 }
 
-app.addEventListener('click', async (e) => {
-  const target = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
+app.addEventListener("click", async (e) => {
+  const target = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
   if (!target) return;
   const { act, url } = target.dataset;
 
   switch (act) {
-    case 'settings':
+    case "settings":
       chrome.runtime.openOptionsPage();
       window.close();
       break;
-    case 'escape-tab':
+    case "escape-tab":
       if ((target as HTMLButtonElement).disabled) break;
-      chrome.runtime.sendMessage('escape-hatch-tab');
+      chrome.runtime.sendMessage("escape-hatch-tab");
       window.close();
       break;
-    case 'escape-window':
+    case "escape-window":
       if ((target as HTMLButtonElement).disabled) break;
-      chrome.runtime.sendMessage('escape-hatch-window');
+      chrome.runtime.sendMessage("escape-hatch-window");
       window.close();
       break;
-    case 'stash-current': {
+    case "stash-current": {
       const active = currentState?.activeTab;
       if (active && isStashableUrl(active.url)) {
         await addToStash(active.url, active.title);
@@ -198,15 +211,15 @@ app.addEventListener('click', async (e) => {
       }
       break;
     }
-    case 'clear':
+    case "clear":
       await clearStash();
       await refresh();
       break;
-    case 'remove':
+    case "remove":
       if (url) await removeFromStash(url);
       await refresh();
       break;
-    case 'restore':
+    case "restore":
       if (url && !(target as HTMLButtonElement).disabled) {
         await removeFromStash(url);
         await chrome.tabs.create({ url });
