@@ -89,9 +89,15 @@ function render(state: PopupState): void {
       <ul class="stash-list"></ul>
     </div>
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
-      <button class="link settings" data-act="settings">Settings</button>
-      <button class="link escape" data-act="escape-hatch" title="Open a new tab outside the limit">Escape Hatch</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+      <button class="link settings" data-act="settings" style="padding-left: 0;">Settings</button>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Escape Hatch</span>
+        <div style="display: flex; gap: 6px;">
+          <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? '' : ' disabled'}>+ Tab</button>
+          <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? '' : ' disabled'}>+ Window</button>
+        </div>
+      </div>
     </div>
   `;
 
@@ -153,8 +159,14 @@ app.addEventListener('click', async (e) => {
       chrome.runtime.openOptionsPage();
       window.close();
       break;
-    case 'escape-hatch':
-      chrome.runtime.sendMessage('escape-hatch');
+    case 'escape-tab':
+      if ((target as HTMLButtonElement).disabled) break;
+      chrome.runtime.sendMessage('escape-hatch-tab');
+      window.close();
+      break;
+    case 'escape-window':
+      if ((target as HTMLButtonElement).disabled) break;
+      chrome.runtime.sendMessage('escape-hatch-window');
       window.close();
       break;
     case 'stash-current': {

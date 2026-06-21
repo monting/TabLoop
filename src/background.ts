@@ -75,9 +75,12 @@ chrome.tabs.onCreated.addListener((tab) => {
 });
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message === "escape-hatch") {
+  if (message === 'escape-hatch' || message === 'escape-hatch-tab') {
     escapeNextTab = true;
     void chrome.tabs.create({});
+  } else if (message === 'escape-hatch-window') {
+    escapeNextTab = true;
+    void chrome.windows.create({});
   }
 });
 
