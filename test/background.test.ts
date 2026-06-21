@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { getStash, setStash, STASH_KEY } from '../src/stash.ts';
 
 // Define chrome mock listeners and storage
 const chromeListeners = {
@@ -119,6 +120,7 @@ mockStorage.sync.settings = {
   oldestDefinition: 'lru',
   excludePinned: true,
   excludeIncognito: true,
+  stashLocation: 'local',
 };
 
 // Dynamically import background.ts so it registers listeners against our mock global.chrome
@@ -158,4 +160,81 @@ test('when a new tab in a new window triggers recycling, the oldest tab is moved
     method: 'update',
     args: [1, { active: true }],
   }, 'Expected update to be called third to activate the moved tab (1)');
+});
+
+test('getStash and setStash use storage.local when stashLocation is local', async () => {
+  mockStorage.sync.settings = {
+    maxTabs: 5,
+    limitScope: 'global',
+    oldestDefinition: 'lru',
+    excludePinned: true,
+    excludeIncognito: true,
+    stashLocation: 'local',
+  };
+
+  mockStorage.local[STASH_KEY] = [{ url: 'https://local.com', time: 100 }];
+  mockStorage.sync[STASH_KEY] = [{ url: 'https://sync.com', time: 200 }];
+
+  const stash = await getStash();
+  assert.deepEqual(stash, [{ url: 'https://local.com', time: 100 }]);
+
+  await setStash([{ url: 'https://local-new.com', time: 300 }]);
+  assert.deepEqual(mockStorage.local[STASH_KEY], [{ url: 'https://local-new.com', time: 300 }]);
+  assert.deepEqual(mockStorage.sync[STASH_KEY], [{ url: 'https://sync.com', time: 200 }]);
+});
+
+test('getStash and setStash use storage.sync when stashLocation is sync', async () => {
+  mockStorage.sync.settings = {
+    maxTabs: 5,
+    limitScope: 'global',
+    oldestDefinition: 'lru',
+    excludePinned: true,
+    excludeIncognito: true,
+    stashLocation: 'sync',
+  };
+
+  mockStorage.local[STASH_KEY] = [{ url: 'https://local.com', time: 100 }];
+  mockStorage.sync[STASH_KEY] = [{ url: 'https://sync.com', time: 200 }];
+
+  const stash = await getStash();
+  assert.deepEqual(stash, [{ url: 'https://sync.com', time: 200 }]);
+
+  await setStash([{ url: 'https://sync-new.com', time: 300 }]);
+  assert.deepEqual(mockStorage.sync[STASH_KEY], [{ url: 'https://sync-new.com', time: 300 }]);
+  assert.deepEqual(mockStorage.local[STASH_KEY], [{ url: 'https://local.com', time: 100 }]);
+});
+
+test('setStash prunes oldest items to stay under 8KB limit when using sync storage', async () => {
+  mockStorage.sync.settings = {
+    maxTabs: 5,
+    limitScope: 'global',
+    oldestDefinition: 'lru',
+    excludePinned: true,
+    excludeIncognito: true,
+    stashLocation: 'sync',
+  };
+
+  // Create a list of 50 items with extremely long URLs to exceed 8KB
+  const longItems: any[] = [];
+  const longUrl = 'https://example.com/' + 'a'.repeat(400); // ~400 char URL
+  for (let i = 0; i < 50; i++) {
+    longItems.unshift({
+      url: `${longUrl}/${i}`,
+      title: `Long Title ${i}`,
+      time: i,
+    });
+  }
+
+  // Ensure JSON representation is over 8000 characters
+  const originalJson = JSON.stringify(longItems);
+  assert.ok(originalJson.length > 8000, `Expected original JSON length (${originalJson.length}) to be > 8000`);
+
+  await setStash(longItems);
+
+  // The stored items in sync should be pruned
+  const stored = mockStorage.sync[STASH_KEY];
+  const storedJson = JSON.stringify(stored);
+  assert.ok(storedJson.length <= 8000, `Expected pruned JSON length (${storedJson.length}) to be <= 8000`);
+  assert.ok(stored.length < 50, `Expected item count (${stored.length}) to be pruned below 50`);
+  assert.equal(stored[0].time, 49); // Newest should still be there
 });

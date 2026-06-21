@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS: Settings = {
   oldestDefinition: 'lru',
   excludePinned: true,
   excludeIncognito: true,
+  stashLocation: 'local',
 };
 
 /** Load settings from sync storage, falling back to defaults for missing keys. */

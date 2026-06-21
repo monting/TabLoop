@@ -1,4 +1,5 @@
-import type { StashItem } from './types';
+import type { StashItem } from './types.ts';
+import { loadSettings } from './settings.ts';
 
 // The stash (tabs parked to free a slot, plus destinations blocked at the limit)
 // persists to disk: these are pages the user still wants, so they should outlive
@@ -20,12 +21,27 @@ export function withUrlAdded(
 }
 
 export async function getStash(): Promise<StashItem[]> {
-  const data = await chrome.storage.local.get(STASH_KEY);
+  const settings = await loadSettings();
+  const storage = settings.stashLocation === 'sync' ? chrome.storage.sync : chrome.storage.local;
+  const data = await storage.get(STASH_KEY);
   return (data[STASH_KEY] as StashItem[]) ?? [];
 }
 
-async function setStash(items: StashItem[]): Promise<void> {
-  await chrome.storage.local.set({ [STASH_KEY]: items });
+export async function setStash(items: StashItem[]): Promise<void> {
+  const settings = await loadSettings();
+  const storage = settings.stashLocation === 'sync' ? chrome.storage.sync : chrome.storage.local;
+
+  if (settings.stashLocation === 'sync') {
+    // chrome.storage.sync has a QUOTA_BYTES_PER_ITEM limit of 8,192 bytes.
+    // If the JSON length is close to 8KB, prune the oldest items until it fits.
+    let serialized = JSON.stringify(items);
+    while (serialized.length > 8000 && items.length > 0) {
+      items.pop(); // Remove the oldest item (at the end of the list)
+      serialized = JSON.stringify(items);
+    }
+  }
+
+  await storage.set({ [STASH_KEY]: items });
 }
 
 export async function addToStash(url: string, title?: string, now = Date.now()): Promise<void> {

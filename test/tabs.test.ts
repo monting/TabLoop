@@ -13,13 +13,13 @@ import { withUrlAdded } from '../src/stash.ts';
 import { DEFAULT_SETTINGS } from '../src/settings.ts';
 import type { Settings } from '../src/types.ts';
 
-// Fixture defaults to 'creation' mode; LRU tests override it explicitly.
 const baseSettings: Settings = {
   maxTabs: 3,
   limitScope: 'global',
   oldestDefinition: 'creation',
   excludePinned: true,
   excludeIncognito: false,
+  stashLocation: 'local',
 };
 
 function tab(id: number, extra: Partial<TabInfo> = {}): TabInfo {
