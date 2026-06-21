@@ -120,7 +120,7 @@ mockStorage.sync.settings = {
   oldestDefinition: 'lru',
   excludePinned: true,
   excludeIncognito: true,
-  stashLocation: 'local',
+  syncStash: false,
 };
 
 // Dynamically import background.ts so it registers listeners against our mock global.chrome
@@ -162,14 +162,14 @@ test('when a new tab in a new window triggers recycling, the oldest tab is moved
   }, 'Expected update to be called third to activate the moved tab (1)');
 });
 
-test('getStash and setStash use storage.local when stashLocation is local', async () => {
+test('getStash and setStash use storage.local when syncStash is false', async () => {
   mockStorage.sync.settings = {
     maxTabs: 5,
     limitScope: 'global',
     oldestDefinition: 'lru',
     excludePinned: true,
     excludeIncognito: true,
-    stashLocation: 'local',
+    syncStash: false,
   };
 
   mockStorage.local[STASH_KEY] = [{ url: 'https://local.com', time: 100 }];
@@ -183,14 +183,14 @@ test('getStash and setStash use storage.local when stashLocation is local', asyn
   assert.deepEqual(mockStorage.sync[STASH_KEY], [{ url: 'https://sync.com', time: 200 }]);
 });
 
-test('getStash and setStash use storage.sync when stashLocation is sync', async () => {
+test('getStash and setStash use storage.sync when syncStash is true', async () => {
   mockStorage.sync.settings = {
     maxTabs: 5,
     limitScope: 'global',
     oldestDefinition: 'lru',
     excludePinned: true,
     excludeIncognito: true,
-    stashLocation: 'sync',
+    syncStash: true,
   };
 
   mockStorage.local[STASH_KEY] = [{ url: 'https://local.com', time: 100 }];
@@ -211,7 +211,7 @@ test('setStash prunes oldest items to stay under 8KB limit when using sync stora
     oldestDefinition: 'lru',
     excludePinned: true,
     excludeIncognito: true,
-    stashLocation: 'sync',
+    syncStash: true,
   };
 
   // Create a list of 50 items with extremely long URLs to exceed 8KB

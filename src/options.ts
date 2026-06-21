@@ -5,7 +5,7 @@ import { getStash, setStash, STASH_KEY } from './stash.ts';
 const maxTabsInput = document.getElementById('maxTabs') as HTMLInputElement;
 const limitScopeSelect = document.getElementById('limitScope') as HTMLSelectElement;
 const oldestDefinitionSelect = document.getElementById('oldestDefinition') as HTMLSelectElement;
-const stashLocationSelect = document.getElementById('stashLocation') as HTMLSelectElement;
+const syncStashCheckbox = document.getElementById('syncStash') as HTMLInputElement;
 const excludePinnedCheckbox = document.getElementById('excludePinned') as HTMLInputElement;
 const excludeIncognitoCheckbox = document.getElementById('excludeIncognito') as HTMLInputElement;
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
@@ -16,7 +16,7 @@ void loadSettings().then((settings) => {
   maxTabsInput.value = settings.maxTabs.toString();
   limitScopeSelect.value = settings.limitScope;
   oldestDefinitionSelect.value = settings.oldestDefinition;
-  stashLocationSelect.value = settings.stashLocation || 'local';
+  syncStashCheckbox.checked = !!settings.syncStash;
   excludePinnedCheckbox.checked = settings.excludePinned;
   excludeIncognitoCheckbox.checked = settings.excludeIncognito;
 });
@@ -29,7 +29,7 @@ function readMaxTabs(): number {
 
 saveBtn.addEventListener('click', async () => {
   const oldSettings = await loadSettings();
-  const newStashLocation = stashLocationSelect.value as Settings['stashLocation'];
+  const newSyncStash = syncStashCheckbox.checked;
 
   const settings: Settings = {
     maxTabs: readMaxTabs(),
@@ -37,12 +37,12 @@ saveBtn.addEventListener('click', async () => {
     oldestDefinition: oldestDefinitionSelect.value as Settings['oldestDefinition'],
     excludePinned: excludePinnedCheckbox.checked,
     excludeIncognito: excludeIncognitoCheckbox.checked,
-    stashLocation: newStashLocation,
+    syncStash: newSyncStash,
   };
   // Reflect any clamping back to the field.
   maxTabsInput.value = settings.maxTabs.toString();
 
-  if (oldSettings.stashLocation !== newStashLocation) {
+  if (oldSettings.syncStash !== newSyncStash) {
     // 1. Read stashed items from the current/old location
     const itemsToMigrate = await getStash();
 
@@ -67,7 +67,7 @@ saveBtn.addEventListener('click', async () => {
     await setStash(mergedItems);
 
     // 6. Remove the stash from the old storage to clean up
-    const oldStorage = oldSettings.stashLocation === 'sync' ? chrome.storage.sync : chrome.storage.local;
+    const oldStorage = oldSettings.syncStash ? chrome.storage.sync : chrome.storage.local;
     await oldStorage.remove(STASH_KEY);
   } else {
     await saveSettings(settings);

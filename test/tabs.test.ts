@@ -19,7 +19,7 @@ const baseSettings: Settings = {
   oldestDefinition: 'creation',
   excludePinned: true,
   excludeIncognito: false,
-  stashLocation: 'local',
+  syncStash: false,
 };
 
 function tab(id: number, extra: Partial<TabInfo> = {}): TabInfo {

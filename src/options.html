@@ -44,14 +44,6 @@
         <option value="creation">Oldest (opened longest ago)</option>
       </select>
     </div>
-    
-    <div class="setting">
-      <label for="stashLocation">Stash Storage Location</label>
-      <select id="stashLocation">
-        <option value="local">Local Storage (This Device Only)</option>
-        <option value="sync">Sync Storage (Persists Across Devices)</option>
-      </select>
-    </div>
     <div class="setting checkbox-group">
       <label class="checkbox-label">
         <input type="checkbox" id="excludePinned">
@@ -60,6 +52,10 @@
       <label class="checkbox-label">
         <input type="checkbox" id="excludeIncognito">
         Exclude Incognito Tabs from the limit
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="syncStash">
+        Sync Stashed Tabs across devices
       </label>
     </div>
 

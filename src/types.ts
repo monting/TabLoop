@@ -4,7 +4,7 @@ export interface Settings {
   oldestDefinition: 'creation' | 'lru';
   excludePinned: boolean;
   excludeIncognito: boolean;
-  stashLocation: 'local' | 'sync';
+  syncStash: boolean;
 }
 
 /** A page saved to the Stash — parked to free a slot, or blocked at the limit. */

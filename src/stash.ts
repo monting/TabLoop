@@ -22,16 +22,16 @@ export function withUrlAdded(
 
 export async function getStash(): Promise<StashItem[]> {
   const settings = await loadSettings();
-  const storage = settings.stashLocation === 'sync' ? chrome.storage.sync : chrome.storage.local;
+  const storage = settings.syncStash ? chrome.storage.sync : chrome.storage.local;
   const data = await storage.get(STASH_KEY);
   return (data[STASH_KEY] as StashItem[]) ?? [];
 }
 
 export async function setStash(items: StashItem[]): Promise<void> {
   const settings = await loadSettings();
-  const storage = settings.stashLocation === 'sync' ? chrome.storage.sync : chrome.storage.local;
+  const storage = settings.syncStash ? chrome.storage.sync : chrome.storage.local;
 
-  if (settings.stashLocation === 'sync') {
+  if (settings.syncStash) {
     // chrome.storage.sync has a QUOTA_BYTES_PER_ITEM limit of 8,192 bytes.
     // If the JSON length is close to 8KB, prune the oldest items until it fits.
     let serialized = JSON.stringify(items);
