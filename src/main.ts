@@ -63,7 +63,10 @@ function render(state: PopupState): void {
 
   app.innerHTML = `
     <div class="header">
-      <h1>TabLoop</h1>
+      <div class="brand">
+        <img class="logo" src="/icon-48.png" alt="TabLoop logo" />
+        <h1>TabLoop</h1>
+      </div>
       <span class="scope">${settings.limitScope === 'per-window' ? 'This window' : 'All windows'}</span>
     </div>
 
