@@ -6,6 +6,7 @@ export interface Settings {
   syncStash: boolean;
   skipResurfaceDomains: string[];
   priorityResurfaceDomains: string[];
+  resurfaceCooldown: number;
 }
 
 /** A page saved to the Stash — parked to free a slot, or blocked at the limit. */

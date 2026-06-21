@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: Settings = {
   syncStash: false,
   skipResurfaceDomains: [],
   priorityResurfaceDomains: [],
+  resurfaceCooldown: 5,
 };
 
 /** Load settings from sync storage, falling back to defaults for missing keys. */

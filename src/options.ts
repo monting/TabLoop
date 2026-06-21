@@ -9,6 +9,7 @@ const syncStashCheckbox = document.getElementById('syncStash') as HTMLInputEleme
 const excludePinnedCheckbox = document.getElementById('excludePinned') as HTMLInputElement;
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const statusText = document.getElementById('status') as HTMLSpanElement;
+const resurfaceCooldownInput = document.getElementById('resurfaceCooldown') as HTMLInputElement;
 
 const skipDomainInput = document.getElementById('skipDomainInput') as HTMLInputElement;
 const addSkipDomainBtn = document.getElementById('addSkipDomainBtn') as HTMLButtonElement;
@@ -204,6 +205,7 @@ void loadSettings().then((settings) => {
   oldestDefinitionSelect.value = settings.oldestDefinition;
   syncStashCheckbox.checked = !!settings.syncStash;
   excludePinnedCheckbox.checked = settings.excludePinned;
+  resurfaceCooldownInput.value = settings.resurfaceCooldown.toString();
   skipDomains = settings.skipResurfaceDomains || [];
   priorityDomains = settings.priorityResurfaceDomains || [];
   renderAll();
@@ -213,6 +215,12 @@ function readMaxTabs(): number {
   const parsed = parseInt(maxTabsInput.value, 10);
   if (!Number.isFinite(parsed)) return DEFAULT_SETTINGS.maxTabs;
   return Math.min(500, Math.max(1, parsed));
+}
+
+function readResurfaceCooldown(): number {
+  const parsed = parseInt(resurfaceCooldownInput.value, 10);
+  if (!Number.isFinite(parsed)) return DEFAULT_SETTINGS.resurfaceCooldown;
+  return Math.min(1440, Math.max(0, parsed));
 }
 
 saveBtn.addEventListener('click', async () => {
@@ -227,9 +235,11 @@ saveBtn.addEventListener('click', async () => {
     syncStash: newSyncStash,
     skipResurfaceDomains: skipDomains,
     priorityResurfaceDomains: priorityDomains,
+    resurfaceCooldown: readResurfaceCooldown(),
   };
   // Reflect any clamping back to the field.
   maxTabsInput.value = settings.maxTabs.toString();
+  resurfaceCooldownInput.value = settings.resurfaceCooldown.toString();
 
   if (oldSettings.syncStash !== newSyncStash) {
     // 1. Read stashed items from the current/old location

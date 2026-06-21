@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { getStash, setStash, STASH_KEY } from '../src/stash.ts';
 
@@ -18,6 +18,10 @@ const mockStorage = {
   sync: {} as Record<string, any>,
   local: {} as Record<string, any>,
 };
+
+beforeEach(() => {
+  mockStorage.session = {};
+});
 
 const callLog: { method: string; args: any[] }[] = [];
 let onWindowsUpdateResolve: (() => void) | null = null;
@@ -95,24 +99,48 @@ global.chrome = {
   },
   storage: {
     session: {
-      get: async (key: string) => {
-        return { [key]: mockStorage.session[key] };
+      get: async (keys: string | string[]) => {
+        if (Array.isArray(keys)) {
+          const res: Record<string, any> = {};
+          for (const k of keys) res[k] = mockStorage.session[k];
+          return res;
+        }
+        return { [keys]: mockStorage.session[keys] };
       },
       set: async (items: any) => {
         Object.assign(mockStorage.session, items);
       },
     },
     sync: {
-      get: async (key: string) => {
-        return { [key]: mockStorage.sync[key] };
+      get: async (keys: string | string[]) => {
+        if (Array.isArray(keys)) {
+          const res: Record<string, any> = {};
+          for (const k of keys) {
+            if (k === 'settings' && mockStorage.sync.settings) {
+              res[k] = { resurfaceCooldown: 0, ...mockStorage.sync.settings };
+            } else {
+              res[k] = mockStorage.sync[k];
+            }
+          }
+          return res;
+        }
+        if (keys === 'settings' && mockStorage.sync.settings) {
+          return { [keys]: { resurfaceCooldown: 0, ...mockStorage.sync.settings } };
+        }
+        return { [keys]: mockStorage.sync[keys] };
       },
       set: async (items: any) => {
         Object.assign(mockStorage.sync, items);
       },
     },
     local: {
-      get: async (key: string) => {
-        return { [key]: mockStorage.local[key] };
+      get: async (keys: string | string[]) => {
+        if (Array.isArray(keys)) {
+          const res: Record<string, any> = {};
+          for (const k of keys) res[k] = mockStorage.local[k];
+          return res;
+        }
+        return { [keys]: mockStorage.local[keys] };
       },
       set: async (items: any) => {
         Object.assign(mockStorage.local, items);

@@ -13,6 +13,7 @@ export interface TabInfo {
 /** Per-tab creation timestamps tracked across the service-worker lifetime. */
 export interface TabTimes {
   creation: Record<number, number>;
+  resurfaced?: Record<number, number>;
 }
 
 /**
@@ -118,6 +119,18 @@ export function selectOldestTab(
   // 1. Skip domains when resurfacing
   if (settings.skipResurfaceDomains && settings.skipResurfaceDomains.length > 0) {
     candidates = candidates.filter((t) => !matchesDomain(t.url, settings.skipResurfaceDomains));
+  }
+
+  if (settings.resurfaceCooldown > 0 && times.resurfaced) {
+    const cooldownMs = settings.resurfaceCooldown * 60 * 1000;
+    const now = Date.now();
+    candidates = candidates.filter((t) => {
+      const lastResurfaced = times.resurfaced?.[t.id];
+      if (lastResurfaced !== undefined) {
+        return (now - lastResurfaced) >= cooldownMs;
+      }
+      return true;
+    });
   }
 
   if (candidates.length === 0) return null;

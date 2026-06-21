@@ -19,6 +19,9 @@ const baseSettings: Settings = {
   oldestDefinition: 'creation',
   excludePinned: true,
   syncStash: false,
+  skipResurfaceDomains: [],
+  priorityResurfaceDomains: [],
+  resurfaceCooldown: 0,
 };
 
 function tab(id: number, extra: Partial<TabInfo> = {}): TabInfo {
@@ -184,6 +187,82 @@ test('selectOldestTab prioritizes priority domains/keywords in priorityResurface
   });
   assert.equal(oldest?.id, 2);
 });
+
+test('selectOldestTab filters out tabs resurfaced within the cooldown period', () => {
+  const tabs = [
+    tab(1, { lastAccessed: 100 }), // oldest but inside cooldown
+    tab(2, { lastAccessed: 200 }), // second oldest, outside cooldown
+  ];
+  const now = Date.now();
+  const oldest = selectOldestTab(
+    tabs,
+    99,
+    {
+      creation: {},
+      resurfaced: {
+        1: now - 2 * 60 * 1000, // resurfaced 2 mins ago (cooldown is 5 mins)
+        2: now - 10 * 60 * 1000, // resurfaced 10 mins ago (outside cooldown)
+      },
+    },
+    {
+      ...baseSettings,
+      oldestDefinition: 'lru',
+      resurfaceCooldown: 5,
+    }
+  );
+  assert.equal(oldest?.id, 2);
+});
+
+test('selectOldestTab allows tabs resurfaced outside the cooldown period', () => {
+  const tabs = [
+    tab(1, { lastAccessed: 100 }),
+    tab(2, { lastAccessed: 200 }),
+  ];
+  const now = Date.now();
+  const oldest = selectOldestTab(
+    tabs,
+    99,
+    {
+      creation: {},
+      resurfaced: {
+        1: now - 10 * 60 * 1000, // resurfaced 10 mins ago
+        2: now - 15 * 60 * 1000, // resurfaced 15 mins ago
+      },
+    },
+    {
+      ...baseSettings,
+      oldestDefinition: 'lru',
+      resurfaceCooldown: 5,
+    }
+  );
+  assert.equal(oldest?.id, 1);
+});
+
+test('selectOldestTab returns null if all candidates are within the cooldown period', () => {
+  const tabs = [
+    tab(1, { lastAccessed: 100 }),
+    tab(2, { lastAccessed: 200 }),
+  ];
+  const now = Date.now();
+  const oldest = selectOldestTab(
+    tabs,
+    99,
+    {
+      creation: {},
+      resurfaced: {
+        1: now - 2 * 60 * 1000,
+        2: now - 3 * 60 * 1000,
+      },
+    },
+    {
+      ...baseSettings,
+      oldestDefinition: 'lru',
+      resurfaceCooldown: 5,
+    }
+  );
+  assert.equal(oldest, null);
+});
+
 
 test('isStashableUrl accepts only http(s) destinations', () => {
   assert.equal(isStashableUrl('https://example.com'), true);

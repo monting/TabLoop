@@ -156,6 +156,7 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
   try {
     await chrome.tabs.update(oldest.id, { active: true });
     await chrome.windows.update(targetWindowId, { focused: true });
+    await state.recordResurfaced(oldest.id);
   } catch (err) {
     console.warn("TabLoop: Could not activate oldest tab:", err);
   }

@@ -8,6 +8,7 @@ import type { TabTimes } from './tabs';
 // tracking here and stays accurate even right after a browser restart.
 
 const KEY_CREATION = 'creation';
+const KEY_RESURFACED = 'resurfaced';
 
 let cache: TabTimes | null = null;
 let loading: Promise<TabTimes> | null = null;
@@ -15,8 +16,11 @@ let loading: Promise<TabTimes> | null = null;
 function load(): Promise<TabTimes> {
   if (cache) return Promise.resolve(cache);
   if (!loading) {
-    loading = chrome.storage.session.get(KEY_CREATION).then((data) => {
-      cache = { creation: (data[KEY_CREATION] as Record<number, number>) ?? {} };
+    loading = chrome.storage.session.get([KEY_CREATION, KEY_RESURFACED]).then((data) => {
+      cache = {
+        creation: (data[KEY_CREATION] as Record<number, number>) ?? {},
+        resurfaced: (data[KEY_RESURFACED] as Record<number, number>) ?? {},
+      };
       return cache;
     });
   }
@@ -25,7 +29,10 @@ function load(): Promise<TabTimes> {
 
 async function persist(times: TabTimes): Promise<void> {
   cache = times;
-  await chrome.storage.session.set({ [KEY_CREATION]: times.creation });
+  await chrome.storage.session.set({
+    [KEY_CREATION]: times.creation,
+    [KEY_RESURFACED]: times.resurfaced ?? {},
+  });
 }
 
 export function getTimes(): Promise<TabTimes> {
@@ -38,9 +45,21 @@ export async function recordCreated(tabId: number, now = Date.now()): Promise<vo
   await persist(times);
 }
 
+export async function recordResurfaced(tabId: number, now = Date.now()): Promise<void> {
+  const times = await load();
+  if (!times.resurfaced) {
+    times.resurfaced = {};
+  }
+  times.resurfaced[tabId] = now;
+  await persist(times);
+}
+
 export async function forget(tabId: number): Promise<void> {
   const times = await load();
   delete times.creation[tabId];
+  if (times.resurfaced) {
+    delete times.resurfaced[tabId];
+  }
   await persist(times);
 }
 
@@ -52,5 +71,5 @@ export async function forget(tabId: number): Promise<void> {
 export async function seed(ids: number[], now = Date.now()): Promise<void> {
   const creation: Record<number, number> = {};
   for (const id of ids) creation[id] = now;
-  await persist({ creation });
+  await persist({ creation, resurfaced: {} });
 }
