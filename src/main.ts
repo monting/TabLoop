@@ -89,7 +89,10 @@ function render(state: PopupState): void {
       <ul class="stash-list"></ul>
     </div>
 
-    <button class="link settings" data-act="settings">Settings</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
+      <button class="link settings" data-act="settings">Settings</button>
+      <button class="link escape" data-act="escape-hatch" title="Open a new tab outside the limit">Escape Hatch</button>
+    </div>
   `;
 
   const list = app.querySelector<HTMLUListElement>('.stash-list')!;
@@ -148,6 +151,10 @@ app.addEventListener('click', async (e) => {
   switch (act) {
     case 'settings':
       chrome.runtime.openOptionsPage();
+      window.close();
+      break;
+    case 'escape-hatch':
+      chrome.runtime.sendMessage('escape-hatch');
       window.close();
       break;
     case 'stash-current': {

@@ -55,14 +55,27 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // ---------------------------------------------------------------------------
 
 let queue: Promise<void> = Promise.resolve();
+let escapeNextTab = false;
 
 chrome.tabs.onCreated.addListener((tab) => {
   queue = queue.then(() => handleCreated(tab)).catch((err) => console.error('TabLoop:', err));
 });
 
+chrome.runtime.onMessage.addListener((message) => {
+  if (message === 'escape-hatch') {
+    escapeNextTab = true;
+    void chrome.tabs.create({});
+  }
+});
+
 async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
   if (tab.id == null) return;
   await state.recordCreated(tab.id);
+
+  if (escapeNextTab) {
+    escapeNextTab = false;
+    return;
+  }
 
   // The extension's own settings page and Chrome's internal pages are exempt from
   // the limit — never block them, even when at capacity.
