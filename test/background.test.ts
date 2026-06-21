@@ -19,9 +19,9 @@ const mockStorage = {
 };
 
 const callLog: { method: string; args: any[] }[] = [];
-let onUpdateResolve: (() => void) | null = null;
-const updatePromise = new Promise<void>((resolve) => {
-  onUpdateResolve = resolve;
+let onWindowsUpdateResolve: (() => void) | null = null;
+const windowsUpdatePromise = new Promise<void>((resolve) => {
+  onWindowsUpdateResolve = resolve;
 });
 
 // Set up global.chrome before importing the background module
@@ -73,7 +73,13 @@ global.chrome = {
     },
     update: async (tabId: number, updateProperties: any) => {
       callLog.push({ method: 'update', args: [tabId, updateProperties] });
-      if (onUpdateResolve) onUpdateResolve();
+    },
+  },
+  windows: {
+    create: async () => {},
+    update: async (windowId: number, updateProperties: any) => {
+      callLog.push({ method: 'windows.update', args: [windowId, updateProperties] });
+      if (onWindowsUpdateResolve) onWindowsUpdateResolve();
     },
   },
   action: {
@@ -141,11 +147,11 @@ test('when a new tab in a new window triggers recycling, the oldest tab is moved
     lastAccessed: 300,
   });
 
-  // Wait for the operations to complete (resolved by the update spy)
-  await updatePromise;
+  // Wait for the operations to complete (resolved by the windows.update spy)
+  await windowsUpdatePromise;
 
   // Verify the sequence of calls
-  assert.equal(callLog.length, 3, 'Expected exactly 3 tab operations');
+  assert.equal(callLog.length, 4, 'Expected exactly 4 tab/window operations');
   assert.deepEqual(callLog[0], {
     method: 'move',
     args: [1, { windowId: 2, index: -1 }],
@@ -160,6 +166,11 @@ test('when a new tab in a new window triggers recycling, the oldest tab is moved
     method: 'update',
     args: [1, { active: true }],
   }, 'Expected update to be called third to activate the moved tab (1)');
+
+  assert.deepEqual(callLog[3], {
+    method: 'windows.update',
+    args: [2, { focused: true }],
+  }, 'Expected windows.update to be called fourth to focus the window (2)');
 });
 
 test('getStash and setStash use storage.local when syncStash is false', async () => {
@@ -247,17 +258,17 @@ test('when a new tab triggers recycling but is missing from query results (race 
   // Clear call log
   callLog.length = 0;
   
-  // Set up a custom resolve promise for the update call
-  let resolveUpdate: (() => void) | null = null;
-  const updatePromise = new Promise<void>((resolve) => {
-    resolveUpdate = resolve;
+  // Set up a custom resolve promise for the windows.update call
+  let resolveWindowsUpdate: (() => void) | null = null;
+  const windowsUpdatePromise = new Promise<void>((resolve) => {
+    resolveWindowsUpdate = resolve;
   });
   
-  // Temporarily override update to resolve our promise
-  const originalUpdate = global.chrome.tabs.update;
-  global.chrome.tabs.update = async (tabId: number, updateProperties: any) => {
-    callLog.push({ method: 'update', args: [tabId, updateProperties] });
-    if (resolveUpdate) resolveUpdate();
+  // Temporarily override windows.update to resolve our promise
+  const originalWindowsUpdate = global.chrome.windows.update;
+  global.chrome.windows.update = async (windowId: number, updateProperties: any) => {
+    callLog.push({ method: 'windows.update', args: [windowId, updateProperties] });
+    if (resolveWindowsUpdate) resolveWindowsUpdate();
   };
 
   // Temporarily override query to NOT include the new tab (tab 4)
@@ -281,15 +292,15 @@ test('when a new tab triggers recycling but is missing from query results (race 
     lastAccessed: 400,
   });
 
-  await updatePromise;
+  await windowsUpdatePromise;
 
   // Restore overrides and settings
   global.chrome.tabs.query = originalQuery;
-  global.chrome.tabs.update = originalUpdate;
+  global.chrome.windows.update = originalWindowsUpdate;
   mockStorage.sync.settings = originalSettings;
 
   // Verify the sequence of calls: it should still have recycled
-  assert.equal(callLog.length, 2, 'Expected exactly 2 tab operations (no move needed since windowId is same)');
+  assert.equal(callLog.length, 3, 'Expected exactly 3 operations (no move needed since windowId is same)');
   assert.deepEqual(callLog[0], {
     method: 'remove',
     args: [4],
@@ -298,6 +309,10 @@ test('when a new tab triggers recycling but is missing from query results (race 
     method: 'update',
     args: [1, { active: true }],
   }, 'Expected update to be called to activate the oldest tab (1)');
+  assert.deepEqual(callLog[2], {
+    method: 'windows.update',
+    args: [1, { focused: true }],
+  }, 'Expected windows.update to focus the window (1)');
 });
 
 test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the new tab is still closed and the oldest tab is updated', async () => {
@@ -308,10 +323,10 @@ test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the n
   // Clear call log
   callLog.length = 0;
   
-  // Set up a custom resolve promise for the update call
-  let resolveUpdate: (() => void) | null = null;
-  const updatePromise = new Promise<void>((resolve) => {
-    resolveUpdate = resolve;
+  // Set up a custom resolve promise for the windows.update call
+  let resolveWindowsUpdate: (() => void) | null = null;
+  const windowsUpdatePromise = new Promise<void>((resolve) => {
+    resolveWindowsUpdate = resolve;
   });
   
   // Temporarily override move to throw an error
@@ -321,11 +336,11 @@ test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the n
     throw new Error('Tabs can only be moved between windows in the same profile.');
   };
 
-  // Temporarily override update to resolve our promise
-  const originalUpdate = global.chrome.tabs.update;
-  global.chrome.tabs.update = async (tabId: number, updateProperties: any) => {
-    callLog.push({ method: 'update', args: [tabId, updateProperties] });
-    if (resolveUpdate) resolveUpdate();
+  // Temporarily override windows.update to resolve our promise
+  const originalWindowsUpdate = global.chrome.windows.update;
+  global.chrome.windows.update = async (windowId: number, updateProperties: any) => {
+    callLog.push({ method: 'windows.update', args: [windowId, updateProperties] });
+    if (resolveWindowsUpdate) resolveWindowsUpdate();
   };
 
   // Override query to return a tab in window 1, while the new tab is in window 2 (so a move is attempted)
@@ -350,16 +365,16 @@ test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the n
     lastAccessed: 300,
   });
 
-  await updatePromise;
+  await windowsUpdatePromise;
 
   // Restore overrides and settings
   global.chrome.tabs.move = originalMove;
-  global.chrome.tabs.update = originalUpdate;
+  global.chrome.windows.update = originalWindowsUpdate;
   global.chrome.tabs.query = originalQuery;
   mockStorage.sync.settings = originalSettings;
 
   // Verify the sequence of calls
-  assert.equal(callLog.length, 3, 'Expected exactly 3 tab operations');
+  assert.equal(callLog.length, 4, 'Expected exactly 4 tab operations');
   assert.deepEqual(callLog[0], {
     method: 'move',
     args: [1, { windowId: 2, index: -1 }],
@@ -372,6 +387,10 @@ test('when chrome.tabs.move throws an error (e.g. cross-profile movement), the n
     method: 'update',
     args: [1, { active: true }],
   }, 'Expected update to still be called third to activate the oldest tab (1)');
+  assert.deepEqual(callLog[3], {
+    method: 'windows.update',
+    args: [1, { focused: true }],
+  }, 'Expected windows.update to focus the original window (1)');
 });
 
 test('updateBadge sets negative badge text when over limit', async () => {

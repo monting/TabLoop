@@ -124,16 +124,24 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
     await addToStash(blockedUrl);
   }
 
+  let targetWindowId = tab.windowId;
   if (oldest.windowId !== tab.windowId) {
     try {
       await chrome.tabs.move(oldest.id, { windowId: tab.windowId, index: -1 });
     } catch (err) {
       console.warn("TabLoop: Could not move oldest tab to new window:", err);
+      targetWindowId = oldest.windowId;
     }
   }
+
   await chrome.tabs.remove(tab.id);
+
+  // Delay to let the browser process the tab closure and update focus states
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
   try {
     await chrome.tabs.update(oldest.id, { active: true });
+    await chrome.windows.update(targetWindowId, { focused: true });
   } catch (err) {
     console.warn("TabLoop: Could not activate oldest tab:", err);
   }
