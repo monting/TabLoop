@@ -1,9 +1,15 @@
-import type { Settings } from './types';
-import type { TabInfo } from './tabs';
-import { countRelevantTabs, isExemptUrl, isOverLimit, isStashableUrl, selectOldestTab } from './tabs';
-import { loadSettings } from './settings';
-import * as state from './state';
-import { addToStash } from './stash';
+import type { Settings } from "./types.ts";
+import type { TabInfo } from "./tabs.ts";
+import {
+  countRelevantTabs,
+  isExemptUrl,
+  isOverLimit,
+  isStashableUrl,
+  selectOldestTab,
+} from "./tabs.ts";
+import { loadSettings } from "./settings.ts";
+import * as state from "./state.ts";
+import { addToStash } from "./stash.ts";
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
@@ -17,8 +23,13 @@ function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   };
 }
 
-function queryScopedTabs(settings: Settings, windowId: number): Promise<chrome.tabs.Tab[]> {
-  return chrome.tabs.query(settings.limitScope === 'per-window' ? { windowId } : {});
+function queryScopedTabs(
+  settings: Settings,
+  windowId: number,
+): Promise<chrome.tabs.Tab[]> {
+  return chrome.tabs.query(
+    settings.limitScope === "per-window" ? { windowId } : {},
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -58,11 +69,13 @@ let queue: Promise<void> = Promise.resolve();
 let escapeNextTab = false;
 
 chrome.tabs.onCreated.addListener((tab) => {
-  queue = queue.then(() => handleCreated(tab)).catch((err) => console.error('TabLoop:', err));
+  queue = queue
+    .then(() => handleCreated(tab))
+    .catch((err) => console.error("TabLoop:", err));
 });
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message === 'escape-hatch') {
+  if (message === "escape-hatch") {
     escapeNextTab = true;
     void chrome.tabs.create({});
   }
@@ -100,10 +113,10 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
     await addToStash(blockedUrl);
   }
 
-  await chrome.tabs.remove(tab.id);
   if (oldest.windowId !== tab.windowId) {
     await chrome.tabs.move(oldest.id, { windowId: tab.windowId, index: -1 });
   }
+  await chrome.tabs.remove(tab.id);
   await chrome.tabs.update(oldest.id, { active: true });
 }
 
@@ -121,7 +134,7 @@ async function updateBadge(): Promise<void> {
     .filter((t): t is TabInfo => t !== null);
 
   let slotsLeft: number;
-  if (settings.limitScope === 'per-window') {
+  if (settings.limitScope === "per-window") {
     const byWindow = new Map<number, TabInfo[]>();
     for (const t of allTabs) {
       const list = byWindow.get(t.windowId) ?? [];
@@ -139,7 +152,7 @@ async function updateBadge(): Promise<void> {
 
   slotsLeft = Math.max(slotsLeft, 0);
 
-  const color = slotsLeft <= 3 ? '#ef4444' : '#22c55e'; // red when tight, green otherwise
+  const color = slotsLeft <= 3 ? "#ef4444" : "#22c55e"; // red when tight, green otherwise
   await chrome.action.setBadgeBackgroundColor({ color });
   await chrome.action.setBadgeText({ text: String(slotsLeft) });
 }
@@ -150,7 +163,7 @@ chrome.tabs.onRemoved.addListener(() => void updateBadge());
 
 // Refresh when settings change (maxTabs, excludePinned, etc.).
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync' && changes['settings']) {
+  if (area === "sync" && changes["settings"]) {
     void updateBadge();
   }
 });
