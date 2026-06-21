@@ -10,6 +10,10 @@ const excludePinnedCheckbox = document.getElementById('excludePinned') as HTMLIn
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const statusText = document.getElementById('status') as HTMLSpanElement;
 const resurfaceCooldownInput = document.getElementById('resurfaceCooldown') as HTMLInputElement;
+const decrementLimitBtn = document.getElementById('decrementLimit') as HTMLButtonElement;
+const incrementLimitBtn = document.getElementById('incrementLimit') as HTMLButtonElement;
+const decrementCooldownBtn = document.getElementById('decrementCooldown') as HTMLButtonElement;
+const incrementCooldownBtn = document.getElementById('incrementCooldown') as HTMLButtonElement;
 
 const skipDomainInput = document.getElementById('skipDomainInput') as HTMLInputElement;
 const addSkipDomainBtn = document.getElementById('addSkipDomainBtn') as HTMLButtonElement;
@@ -196,6 +200,26 @@ priorityDomainInput.addEventListener('keydown', (e) => {
     e.preventDefault();
     addPriorityDomainBtn.click();
   }
+});
+
+decrementLimitBtn.addEventListener('click', () => {
+  const current = parseInt(maxTabsInput.value, 10) || 10;
+  maxTabsInput.value = Math.max(1, current - 1).toString();
+});
+
+incrementLimitBtn.addEventListener('click', () => {
+  const current = parseInt(maxTabsInput.value, 10) || 10;
+  maxTabsInput.value = Math.min(500, current + 1).toString();
+});
+
+decrementCooldownBtn.addEventListener('click', () => {
+  const current = parseInt(resurfaceCooldownInput.value, 10) || 0;
+  resurfaceCooldownInput.value = Math.max(0, current - 1).toString();
+});
+
+incrementCooldownBtn.addEventListener('click', () => {
+  const current = parseInt(resurfaceCooldownInput.value, 10) || 0;
+  resurfaceCooldownInput.value = Math.min(1440, current + 1).toString();
 });
 
 // Restore saved settings.

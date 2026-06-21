@@ -265,6 +265,55 @@
                 user-select: none;
                 pointer-events: none;
             }
+            .tabs-limit-control {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                max-width: 220px;
+            }
+            .tabs-limit-control input[type="number"] {
+                flex: 1;
+                text-align: center;
+                font-size: 20px !important;
+                font-weight: 600;
+                padding: 10px !important;
+                -moz-appearance: textfield;
+            }
+            .tabs-limit-control input[type="number"]::-webkit-outer-spin-button,
+            .tabs-limit-control input[type="number"]::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+            .limit-adjust-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 44px;
+                height: 44px;
+                flex-shrink: 0;
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                color: white;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 22px;
+                font-weight: 600;
+                transition:
+                    background 0.2s,
+                    transform 0.1s,
+                    border-color 0.2s;
+                padding: 0;
+                user-select: none;
+            }
+            .limit-adjust-btn:hover {
+                background: rgba(255, 255, 255, 0.2);
+                border-color: rgba(255, 255, 255, 0.3);
+                transform: scale(1.05);
+                box-shadow: none;
+            }
+            .limit-adjust-btn:active {
+                transform: scale(0.95);
+            }
         </style>
     </head>
     <body>
@@ -273,13 +322,17 @@
 
             <div class="setting">
                 <label for="maxTabs">Maximum Tabs Limit</label>
-                <input
-                    type="number"
-                    id="maxTabs"
-                    min="1"
-                    max="500"
-                    value="100"
-                />
+                <div class="tabs-limit-control">
+                    <button type="button" id="decrementLimit" class="limit-adjust-btn">&minus;</button>
+                    <input
+                        type="number"
+                        id="maxTabs"
+                        min="1"
+                        max="500"
+                        value="100"
+                    />
+                    <button type="button" id="incrementLimit" class="limit-adjust-btn">&plus;</button>
+                </div>
             </div>
 
             <div class="setting">
@@ -321,7 +374,8 @@
                     Recently re-surfaced tabs are prevented from re-surfacing
                     again for:
                 </span>
-                <div class="input-with-unit">
+                <div class="tabs-limit-control" style="max-width: 280px;">
+                    <button type="button" id="decrementCooldown" class="limit-adjust-btn">&minus;</button>
                     <input
                         type="number"
                         id="resurfaceCooldown"
@@ -329,7 +383,8 @@
                         max="1440"
                         value="5"
                     />
-                    <span class="unit-text">minutes</span>
+                    <button type="button" id="incrementCooldown" class="limit-adjust-btn">&plus;</button>
+                    <span class="unit-text" style="margin-left: 4px;">minutes</span>
                 </div>
                 <span class="setting-desc"> Set to 0 to disable. </span>
             </div>
