@@ -159,6 +159,32 @@ test('selectOldestTab treats untracked tabs as oldest', () => {
   assert.equal(oldest?.id, 1);
 });
 
+test('selectOldestTab skips domains listed in skipResurfaceDomains', () => {
+  const tabs = [
+    tab(1, { url: 'https://youtube.com/watch?v=123' }),
+    tab(2, { url: 'https://github.com' }),
+    tab(3, { url: 'https://google.com' }),
+  ];
+  const oldest = selectOldestTab(tabs, 99, times({ 1: 50, 2: 100, 3: 200 }), {
+    ...baseSettings,
+    skipResurfaceDomains: ['youtube.com'],
+  });
+  assert.equal(oldest?.id, 2);
+});
+
+test('selectOldestTab prioritizes priority domains/keywords in priorityResurfaceDomains', () => {
+  const tabs = [
+    tab(1, { url: 'https://google.com' }),
+    tab(2, { url: 'https://github.com/pulls' }),
+    tab(3, { url: 'https://issues.apache.org' }),
+  ];
+  const oldest = selectOldestTab(tabs, 99, times({ 1: 50, 2: 100, 3: 200 }), {
+    ...baseSettings,
+    priorityResurfaceDomains: ['github.com', 'issue'],
+  });
+  assert.equal(oldest?.id, 2);
+});
+
 test('isStashableUrl accepts only http(s) destinations', () => {
   assert.equal(isStashableUrl('https://example.com'), true);
   assert.equal(isStashableUrl('http://example.com/path'), true);

@@ -6,6 +6,8 @@ export const DEFAULT_SETTINGS: Settings = {
   oldestDefinition: 'lru',
   excludePinned: true,
   syncStash: false,
+  skipResurfaceDomains: [],
+  priorityResurfaceDomains: [],
 };
 
 /** Load settings from sync storage, falling back to defaults for missing keys. */

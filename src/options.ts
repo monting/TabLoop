@@ -10,6 +10,193 @@ const excludePinnedCheckbox = document.getElementById('excludePinned') as HTMLIn
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const statusText = document.getElementById('status') as HTMLSpanElement;
 
+const skipDomainInput = document.getElementById('skipDomainInput') as HTMLInputElement;
+const addSkipDomainBtn = document.getElementById('addSkipDomainBtn') as HTMLButtonElement;
+const skipDomainList = document.getElementById('skipDomainList') as HTMLDivElement;
+const skipSuggestions = document.getElementById('skipSuggestions') as HTMLDivElement;
+
+const priorityDomainInput = document.getElementById('priorityDomainInput') as HTMLInputElement;
+const addPriorityDomainBtn = document.getElementById('addPriorityDomainBtn') as HTMLButtonElement;
+const priorityDomainList = document.getElementById('priorityDomainList') as HTMLDivElement;
+const prioritySuggestions = document.getElementById('prioritySuggestions') as HTMLDivElement;
+
+let skipDomains: string[] = [];
+let priorityDomains: string[] = [];
+
+function getFavicon(item: string): string {
+  const isDomain = item.includes('.') && !item.includes(' ');
+  if (isDomain) {
+    let clean = item.trim();
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      clean = 'https://' + clean;
+    }
+    return `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(clean)}&size=32`;
+  }
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+}
+
+function renderDomainList(listEl: HTMLDivElement, domains: string[], onRemove: (index: number) => void) {
+  listEl.innerHTML = '';
+  if (domains.length === 0) {
+    listEl.innerHTML = '<div style="font-size: 13px; color: rgba(255,255,255,0.3); padding: 8px;">No domains added yet.</div>';
+    return;
+  }
+  domains.forEach((item, index) => {
+    const entry = document.createElement('div');
+    entry.className = 'domain-entry';
+
+    const info = document.createElement('div');
+    info.className = 'domain-info';
+
+    const img = document.createElement('img');
+    img.className = 'domain-favicon';
+    img.src = getFavicon(item);
+    img.alt = '';
+    img.onerror = () => {
+      img.src = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+    };
+
+    const text = document.createElement('span');
+    text.textContent = item;
+
+    info.appendChild(img);
+    info.appendChild(text);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'domain-remove';
+    removeBtn.type = 'button';
+    removeBtn.innerHTML = '&times;';
+    removeBtn.addEventListener('click', () => onRemove(index));
+
+    entry.appendChild(info);
+    entry.appendChild(removeBtn);
+    listEl.appendChild(entry);
+  });
+}
+
+async function updateSuggestions(
+  skipPillsEl: HTMLDivElement,
+  priorityPillsEl: HTMLDivElement,
+  currentSkip: string[],
+  currentPriority: string[],
+  onAddSkip: (domain: string) => void,
+  onAddPriority: (domain: string) => void
+) {
+  let domainsList: string[] = [];
+  try {
+    const tabs = await chrome.tabs.query({});
+    const activeDomains = new Set<string>();
+    for (const tab of tabs) {
+      if (tab.url) {
+        try {
+          const url = new URL(tab.url);
+          if (url.protocol.startsWith('http')) {
+            const domain = url.hostname.replace(/^www\./i, '');
+            if (domain) {
+              activeDomains.add(domain);
+            }
+          }
+        } catch {}
+      }
+    }
+    domainsList = Array.from(activeDomains).sort();
+  } catch (e) {
+    console.warn("Could not query active tabs for suggestions:", e);
+  }
+
+  const renderPills = (
+    container: HTMLDivElement,
+    currentList: string[],
+    onAdd: (d: string) => void
+  ) => {
+    container.innerHTML = '';
+    const candidates = domainsList.filter(d => !currentList.includes(d));
+    if (candidates.length === 0) {
+      container.innerHTML = '<span style="font-size: 12px; color: rgba(255,255,255,0.3);">No suggestions available (already added or no active tabs).</span>';
+      return;
+    }
+
+    candidates.forEach(d => {
+      const pill = document.createElement('span');
+      pill.className = 'pill';
+      
+      const img = document.createElement('img');
+      img.className = 'domain-favicon';
+      img.src = getFavicon(d);
+      img.alt = '';
+      img.onerror = () => {
+        img.src = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+      };
+
+      const text = document.createTextNode(`${d} +`);
+
+      pill.appendChild(img);
+      pill.appendChild(text);
+
+      pill.addEventListener('click', () => onAdd(d));
+      container.appendChild(pill);
+    });
+  };
+
+  renderPills(skipPillsEl, currentSkip, onAddSkip);
+  renderPills(priorityPillsEl, currentPriority, onAddPriority);
+}
+
+function renderAll() {
+  renderDomainList(skipDomainList, skipDomains, (idx) => {
+    skipDomains.splice(idx, 1);
+    renderAll();
+  });
+  renderDomainList(priorityDomainList, priorityDomains, (idx) => {
+    priorityDomains.splice(idx, 1);
+    renderAll();
+  });
+  void updateSuggestions(
+    skipSuggestions,
+    prioritySuggestions,
+    skipDomains,
+    priorityDomains,
+    (d) => {
+      skipDomains.push(d);
+      renderAll();
+    },
+    (d) => {
+      priorityDomains.push(d);
+      renderAll();
+    }
+  );
+}
+
+addSkipDomainBtn.addEventListener('click', () => {
+  const domain = skipDomainInput.value.trim();
+  if (domain && !skipDomains.includes(domain)) {
+    skipDomains.push(domain);
+    skipDomainInput.value = '';
+    renderAll();
+  }
+});
+skipDomainInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    addSkipDomainBtn.click();
+  }
+});
+
+addPriorityDomainBtn.addEventListener('click', () => {
+  const item = priorityDomainInput.value.trim();
+  if (item && !priorityDomains.includes(item)) {
+    priorityDomains.push(item);
+    priorityDomainInput.value = '';
+    renderAll();
+  }
+});
+priorityDomainInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    addPriorityDomainBtn.click();
+  }
+});
+
 // Restore saved settings.
 void loadSettings().then((settings) => {
   maxTabsInput.value = settings.maxTabs.toString();
@@ -17,6 +204,9 @@ void loadSettings().then((settings) => {
   oldestDefinitionSelect.value = settings.oldestDefinition;
   syncStashCheckbox.checked = !!settings.syncStash;
   excludePinnedCheckbox.checked = settings.excludePinned;
+  skipDomains = settings.skipResurfaceDomains || [];
+  priorityDomains = settings.priorityResurfaceDomains || [];
+  renderAll();
 });
 
 function readMaxTabs(): number {
@@ -35,6 +225,8 @@ saveBtn.addEventListener('click', async () => {
     oldestDefinition: oldestDefinitionSelect.value as Settings['oldestDefinition'],
     excludePinned: excludePinnedCheckbox.checked,
     syncStash: newSyncStash,
+    skipResurfaceDomains: skipDomains,
+    priorityResurfaceDomains: priorityDomains,
   };
   // Reflect any clamping back to the field.
   maxTabsInput.value = settings.maxTabs.toString();

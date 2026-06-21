@@ -52,6 +52,53 @@ export function isOverLimit(tabs: TabInfo[], settings: Settings): boolean {
   return countRelevantTabs(tabs, settings) > settings.maxTabs;
 }
 
+export function matchesDomain(urlStr: string | undefined, domainList: string[] | undefined): boolean {
+  if (!urlStr || !domainList || domainList.length === 0) return false;
+  try {
+    let parsedUrl: URL;
+    if (/^[a-z]+:\/\//i.test(urlStr)) {
+      parsedUrl = new URL(urlStr);
+    } else {
+      parsedUrl = new URL('http://' + urlStr);
+    }
+    const hostname = parsedUrl.hostname.toLowerCase();
+    return domainList.some((domain) => {
+      const d = domain.trim().toLowerCase();
+      if (!d) return false;
+      return hostname === d || hostname.endsWith('.' + d);
+    });
+  } catch {
+    return false;
+  }
+}
+
+export function matchesDomainOrKeyword(urlStr: string | undefined, list: string[] | undefined): boolean {
+  if (!urlStr || !list || list.length === 0) return false;
+  try {
+    let parsedUrl: URL;
+    if (/^[a-z]+:\/\//i.test(urlStr)) {
+      parsedUrl = new URL(urlStr);
+    } else {
+      parsedUrl = new URL('http://' + urlStr);
+    }
+    const hostname = parsedUrl.hostname.toLowerCase();
+    return list.some((item) => {
+      const trimmed = item.trim().toLowerCase();
+      if (!trimmed) return false;
+      if (trimmed.includes('.') && !trimmed.includes(' ')) {
+        if (hostname === trimmed || hostname.endsWith('.' + trimmed)) return true;
+      }
+      return urlStr.toLowerCase().includes(trimmed);
+    });
+  } catch {
+    const lowerUrl = urlStr.toLowerCase();
+    return list.some((item) => {
+      const trimmed = item.trim().toLowerCase();
+      return trimmed && lowerUrl.includes(trimmed);
+    });
+  }
+}
+
 /**
  * Pick the tab to recycle when the limit is exceeded, or null if nothing may be
  * touched (everything is pinned/protected, so the new tab should be allowed).
@@ -66,11 +113,25 @@ export function selectOldestTab(
   settings: Settings,
 ): TabInfo | null {
   // Recyclable tabs are exactly those that count toward the limit, minus the new one.
-  const candidates = relevantTabs(tabs, settings).filter((t) => t.id !== newTabId);
+  let candidates = relevantTabs(tabs, settings).filter((t) => t.id !== newTabId);
+
+  // 1. Skip domains when resurfacing
+  if (settings.skipResurfaceDomains && settings.skipResurfaceDomains.length > 0) {
+    candidates = candidates.filter((t) => !matchesDomain(t.url, settings.skipResurfaceDomains));
+  }
+
   if (candidates.length === 0) return null;
 
   const keyOf = (t: TabInfo): number =>
     settings.oldestDefinition === 'lru' ? t.lastAccessed ?? 0 : times.creation[t.id] ?? 0;
+
+  // 2. Prioritize priority domains/keywords when resurfacing
+  if (settings.priorityResurfaceDomains && settings.priorityResurfaceDomains.length > 0) {
+    const prioritized = candidates.filter((t) => matchesDomainOrKeyword(t.url, settings.priorityResurfaceDomains));
+    if (prioritized.length > 0) {
+      return prioritized.reduce((oldest, t) => (keyOf(t) < keyOf(oldest) ? t : oldest));
+    }
+  }
 
   // Smallest timestamp wins; ties keep the earlier tab (stable, leftmost-by-index).
   return candidates.reduce((oldest, t) => (keyOf(t) < keyOf(oldest) ? t : oldest));
