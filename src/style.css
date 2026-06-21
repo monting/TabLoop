@@ -303,6 +303,13 @@ body {
 .settings {
   align-self: center;
   padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings:hover svg {
+  transform: rotate(45deg);
 }
 
 .escape-btn {
