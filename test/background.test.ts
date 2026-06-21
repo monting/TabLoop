@@ -452,6 +452,182 @@ test('updateBadge sets negative badge text when over limit', async () => {
   assert.equal(badgeText, '-1', 'Badge text should reflect exceeded tabs as a negative count');
 });
 
+test('updateBadge clears badge text when remaining slots are plenty', async () => {
+  const originalSettings = { ...mockStorage.sync.settings };
+  mockStorage.sync.settings.maxTabs = 10; // set limit to 10
+  mockStorage.sync.settings.excludePinned = true;
+  
+  let badgeText = 'initial';
+  let resolveBadge: (() => void) | null = null;
+  const badgePromise = new Promise<void>((resolve) => {
+    resolveBadge = resolve;
+  });
+
+  const originalSetBadgeText = global.chrome.action.setBadgeText;
+  global.chrome.action.setBadgeText = async (details: any) => {
+    badgeText = details.text;
+    if (resolveBadge) resolveBadge();
+  };
+
+  const originalQuery = global.chrome.tabs.query;
+  global.chrome.tabs.query = async () => {
+    return [
+      { id: 1, pinned: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+      { id: 2, pinned: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+      { id: 3, pinned: false, windowId: 1, url: 'https://yahoo.com', lastAccessed: 300 },
+    ];
+  };
+
+  const storageListener = chromeListeners.storageChanged[0];
+  if (storageListener) {
+    storageListener({ settings: {} }, 'sync');
+  }
+
+  await badgePromise;
+
+  global.chrome.action.setBadgeText = originalSetBadgeText;
+  global.chrome.tabs.query = originalQuery;
+  mockStorage.sync.settings = originalSettings;
+
+  assert.equal(badgeText, '', 'Badge text should be cleared when remaining slots are plenty');
+});
+
+test('updateBadge sets badge text when remaining slots are <= 5', async () => {
+  const originalSettings = { ...mockStorage.sync.settings };
+  mockStorage.sync.settings.maxTabs = 6; // set limit to 6 (6 - 3 = 3 slots left)
+  mockStorage.sync.settings.excludePinned = true;
+  
+  let badgeText = '';
+  let resolveBadge: (() => void) | null = null;
+  const badgePromise = new Promise<void>((resolve) => {
+    resolveBadge = resolve;
+  });
+
+  const originalSetBadgeText = global.chrome.action.setBadgeText;
+  global.chrome.action.setBadgeText = async (details: any) => {
+    badgeText = details.text;
+    if (resolveBadge) resolveBadge();
+  };
+
+  const originalQuery = global.chrome.tabs.query;
+  global.chrome.tabs.query = async () => {
+    return [
+      { id: 1, pinned: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+      { id: 2, pinned: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+      { id: 3, pinned: false, windowId: 1, url: 'https://yahoo.com', lastAccessed: 300 },
+    ];
+  };
+
+  const storageListener = chromeListeners.storageChanged[0];
+  if (storageListener) {
+    storageListener({ settings: {} }, 'sync');
+  }
+
+  await badgePromise;
+
+  global.chrome.action.setBadgeText = originalSetBadgeText;
+  global.chrome.tabs.query = originalQuery;
+  mockStorage.sync.settings = originalSettings;
+
+  assert.equal(badgeText, '3', 'Badge text should show remaining slots when remaining slots are <= 5');
+});
+
+test('updateBadge sets badge text and green color when remaining slots are exactly 5', async () => {
+  const originalSettings = { ...mockStorage.sync.settings };
+  mockStorage.sync.settings.maxTabs = 8; // set limit to 8 (8 - 3 = 5 slots left)
+  mockStorage.sync.settings.excludePinned = true;
+  
+  let badgeText = '';
+  let badgeColor = '';
+  let resolveBadge: (() => void) | null = null;
+  const badgePromise = new Promise<void>((resolve) => {
+    resolveBadge = resolve;
+  });
+
+  const originalSetBadgeText = global.chrome.action.setBadgeText;
+  global.chrome.action.setBadgeText = async (details: any) => {
+    badgeText = details.text;
+    if (resolveBadge) resolveBadge();
+  };
+
+  const originalSetBadgeColor = global.chrome.action.setBadgeBackgroundColor;
+  global.chrome.action.setBadgeBackgroundColor = async (details: any) => {
+    badgeColor = details.color;
+  };
+
+  const originalQuery = global.chrome.tabs.query;
+  global.chrome.tabs.query = async () => {
+    return [
+      { id: 1, pinned: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+      { id: 2, pinned: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+      { id: 3, pinned: false, windowId: 1, url: 'https://yahoo.com', lastAccessed: 300 },
+    ];
+  };
+
+  const storageListener = chromeListeners.storageChanged[0];
+  if (storageListener) {
+    storageListener({ settings: {} }, 'sync');
+  }
+
+  await badgePromise;
+
+  global.chrome.action.setBadgeText = originalSetBadgeText;
+  global.chrome.action.setBadgeBackgroundColor = originalSetBadgeColor;
+  global.chrome.tabs.query = originalQuery;
+  mockStorage.sync.settings = originalSettings;
+
+  assert.equal(badgeText, '5', 'Badge text should show remaining slots when remaining slots are 5');
+  assert.equal(badgeColor, '#22c55e', 'Badge color should be green when remaining slots is 5');
+});
+
+test('updateBadge sets badge text and red color when remaining slots are exactly 3', async () => {
+  const originalSettings = { ...mockStorage.sync.settings };
+  mockStorage.sync.settings.maxTabs = 6; // set limit to 6 (6 - 3 = 3 slots left)
+  mockStorage.sync.settings.excludePinned = true;
+  
+  let badgeText = '';
+  let badgeColor = '';
+  let resolveBadge: (() => void) | null = null;
+  const badgePromise = new Promise<void>((resolve) => {
+    resolveBadge = resolve;
+  });
+
+  const originalSetBadgeText = global.chrome.action.setBadgeText;
+  global.chrome.action.setBadgeText = async (details: any) => {
+    badgeText = details.text;
+    if (resolveBadge) resolveBadge();
+  };
+
+  const originalSetBadgeColor = global.chrome.action.setBadgeBackgroundColor;
+  global.chrome.action.setBadgeBackgroundColor = async (details: any) => {
+    badgeColor = details.color;
+  };
+
+  const originalQuery = global.chrome.tabs.query;
+  global.chrome.tabs.query = async () => {
+    return [
+      { id: 1, pinned: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+      { id: 2, pinned: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+      { id: 3, pinned: false, windowId: 1, url: 'https://yahoo.com', lastAccessed: 300 },
+    ];
+  };
+
+  const storageListener = chromeListeners.storageChanged[0];
+  if (storageListener) {
+    storageListener({ settings: {} }, 'sync');
+  }
+
+  await badgePromise;
+
+  global.chrome.action.setBadgeText = originalSetBadgeText;
+  global.chrome.action.setBadgeBackgroundColor = originalSetBadgeColor;
+  global.chrome.tabs.query = originalQuery;
+  mockStorage.sync.settings = originalSettings;
+
+  assert.equal(badgeText, '3', 'Badge text should show remaining slots when remaining slots are 3');
+  assert.equal(badgeColor, '#ef4444', 'Badge color should be red when remaining slots is 3');
+});
+
 test('a tab opened via the escape hatch bypasses the limit and is not recycled', async () => {
   const originalSettings = { ...mockStorage.sync.settings };
   mockStorage.sync.settings.maxTabs = 2; // query returns 3 tabs => over limit

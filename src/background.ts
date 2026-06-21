@@ -191,9 +191,13 @@ async function updateBadge(): Promise<void> {
     slotsLeft = settings.maxTabs - countRelevantTabs(allTabs, settings);
   }
 
-  const color = slotsLeft <= 3 ? "#ef4444" : "#22c55e"; // red when tight, green otherwise
-  await chrome.action.setBadgeBackgroundColor({ color });
-  await chrome.action.setBadgeText({ text: String(slotsLeft) });
+  if (slotsLeft <= 5) {
+    const color = slotsLeft <= 3 ? "#ef4444" : "#22c55e"; // red when tight, green warning otherwise
+    await chrome.action.setBadgeBackgroundColor({ color });
+    await chrome.action.setBadgeText({ text: String(slotsLeft) });
+  } else {
+    await chrome.action.setBadgeText({ text: "" });
+  }
 }
 
 // Refresh when tabs come or go.
