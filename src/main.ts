@@ -176,8 +176,8 @@ app.addEventListener('click', async (e) => {
       break;
     case 'restore':
       if (url && !(target as HTMLButtonElement).disabled) {
-        await chrome.tabs.create({ url });
         await removeFromStash(url);
+        await chrome.tabs.create({ url });
         window.close();
       }
       break;
