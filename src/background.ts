@@ -1,9 +1,9 @@
-import type { StashItem, Settings } from './types';
+import type { Settings } from './types';
 import type { TabInfo } from './tabs';
-import { isExemptUrl, isOverLimit, isStashableUrl, selectOldestTab } from './tabs';
+import { countRelevantTabs, isExemptUrl, isOverLimit, isStashableUrl, selectOldestTab } from './tabs';
 import { loadSettings } from './settings';
 import * as state from './state';
-import { addToStash, STASH_KEY, getStash } from './stash';
+import { addToStash } from './stash';
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
@@ -95,20 +95,52 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Action badge: surfaces how many stashed pages are waiting.
+// Action badge: surfaces how many tab slots are still available.
 // ---------------------------------------------------------------------------
 
-async function updateBadge(count: number): Promise<void> {
-  await chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
-  await chrome.action.setBadgeText({ text: count > 0 ? String(count) : '' });
+async function updateBadge(): Promise<void> {
+  const settings = await loadSettings();
+
+  // When scoped per-window we show the *lowest* remaining across all windows,
+  // giving the user a conservative (worst-case) number.
+  const allTabs = (await chrome.tabs.query({}))
+    .map(toTabInfo)
+    .filter((t): t is TabInfo => t !== null);
+
+  let slotsLeft: number;
+  if (settings.limitScope === 'per-window') {
+    const byWindow = new Map<number, TabInfo[]>();
+    for (const t of allTabs) {
+      const list = byWindow.get(t.windowId) ?? [];
+      list.push(t);
+      byWindow.set(t.windowId, list);
+    }
+    slotsLeft = Math.min(
+      ...Array.from(byWindow.values()).map(
+        (wTabs) => settings.maxTabs - countRelevantTabs(wTabs, settings),
+      ),
+    );
+  } else {
+    slotsLeft = settings.maxTabs - countRelevantTabs(allTabs, settings);
+  }
+
+  slotsLeft = Math.max(slotsLeft, 0);
+
+  const color = slotsLeft <= 3 ? '#ef4444' : '#22c55e'; // red when tight, green otherwise
+  await chrome.action.setBadgeBackgroundColor({ color });
+  await chrome.action.setBadgeText({ text: String(slotsLeft) });
 }
 
+// Refresh when tabs come or go.
+chrome.tabs.onCreated.addListener(() => void updateBadge());
+chrome.tabs.onRemoved.addListener(() => void updateBadge());
+
+// Refresh when settings change (maxTabs, excludePinned, etc.).
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes[STASH_KEY]) {
-    const items = (changes[STASH_KEY].newValue as StashItem[] | undefined) ?? [];
-    void updateBadge(items.length);
+  if (area === 'sync' && changes['settings']) {
+    void updateBadge();
   }
 });
 
-// Reflect the current stash whenever the worker spins up.
-void getStash().then((items) => updateBadge(items.length));
+// Reflect the current state whenever the worker spins up.
+void updateBadge();
