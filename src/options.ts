@@ -260,7 +260,7 @@ function readResurfaceCooldown(): number {
   return Math.min(1440, Math.max(0, parsed));
 }
 
-let saveTimeout: ReturnType<typeof setTimeout> | undefined;
+let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...args: Parameters<T>) => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -271,9 +271,9 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...
 }
 
 function showSavingStatus() {
-  if (saveTimeout) {
-    clearTimeout(saveTimeout);
-    saveTimeout = undefined;
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    hideTimer = undefined;
   }
   statusContainer.className = 'visible saving';
   statusIcon.innerHTML = `
@@ -345,7 +345,7 @@ async function saveCurrentSettings() {
   `;
   statusText.textContent = 'Settings saved automatically!';
 
-  saveTimeout = setTimeout(() => {
+  hideTimer = setTimeout(() => {
     statusContainer.classList.remove('visible');
   }, 2000);
 }

@@ -6,6 +6,7 @@ import {
   isOverLimit,
   isStashableUrl,
   selectOldestTab,
+  sortTabsForResurfacing,
   type TabInfo,
   type TabTimes,
 } from '../src/tabs.ts';
@@ -30,7 +31,7 @@ function tab(id: number, extra: Partial<TabInfo> = {}): TabInfo {
 }
 
 function times(creation: Record<number, number> = {}): TabTimes {
-  return { creation };
+  return { creation, resurfaced: {}, lastAccessed: {} };
 }
 
 test('the default configuration recycles the least-recently-used tab', () => {
@@ -294,4 +295,45 @@ test('withUrlAdded caps the list at 50 entries, keeping the newest', () => {
   }
   assert.equal(items.length, 50);
   assert.equal(items[0].url, 'https://site59.com');
+});
+
+test('sortTabsForResurfacing sorts tabs oldest-first', () => {
+  const tabs = [
+    tab(1, { lastAccessed: 300 }),
+    tab(2, { lastAccessed: 100 }),
+    tab(3, { lastAccessed: 200 }),
+  ];
+  const sorted = sortTabsForResurfacing(tabs, times(), { ...baseSettings, oldestDefinition: 'lru' });
+  assert.deepEqual(sorted.map((t) => t.id), [2, 3, 1]);
+});
+
+test('sortTabsForResurfacing prioritizes priority domains', () => {
+  const tabs = [
+    tab(1, { url: 'https://google.com', lastAccessed: 100 }),
+    tab(2, { url: 'https://github.com', lastAccessed: 300 }),
+    tab(3, { url: 'https://github.com', lastAccessed: 200 }),
+  ];
+  const sorted = sortTabsForResurfacing(tabs, times(), {
+    ...baseSettings,
+    oldestDefinition: 'lru',
+    priorityResurfaceDomains: ['github.com'],
+  });
+  assert.deepEqual(sorted.map((t) => t.id), [3, 2, 1]);
+});
+
+test('sortTabsForResurfacing falls back to times.lastAccessed if tab.lastAccessed is missing', () => {
+  const tabs = [
+    tab(1),
+    tab(2),
+    tab(3),
+  ];
+  const sorted = sortTabsForResurfacing(
+    tabs,
+    {
+      creation: {},
+      lastAccessed: { 1: 300, 2: 100, 3: 200 },
+    },
+    { ...baseSettings, oldestDefinition: 'lru' }
+  );
+  assert.deepEqual(sorted.map((t) => t.id), [2, 3, 1]);
 });

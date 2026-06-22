@@ -19,7 +19,7 @@
 
 body {
   margin: 0;
-  width: 350px;
+  width: 450px;
   background-color: var(--bg-color);
   background-image:
     radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
@@ -346,6 +346,106 @@ body {
 .stash-list::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 999px;
+}
+
+/* Resurface queue list */
+.resurface-queue {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.resurface-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.resurface-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.resurface-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.resurface-list::-webkit-scrollbar {
+  width: 6px;
+}
+.resurface-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+
+.resurface-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.resurface-item .num-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  min-width: 16px;
+}
+
+.resurface-item .favicon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.resurface-item .title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.focus-btn {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: var(--font-family);
+  transition: background 0.2s ease;
+}
+
+.focus-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.time-badge {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+  user-select: none;
 }
 
 @keyframes fadeInDown {

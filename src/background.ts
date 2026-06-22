@@ -55,6 +55,9 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   void state.forget(tabId);
 });
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  void state.recordAccessed(activeInfo.tabId);
+});
 
 // ---------------------------------------------------------------------------
 // Enforcement

@@ -7,6 +7,7 @@ const chromeListeners = {
   onInstalled: [] as Function[],
   onStartup: [] as Function[],
   onRemoved: [] as Function[],
+  onActivated: [] as Function[],
   onCreated: [] as Function[],
   onUpdated: [] as Function[],
   onMessage: [] as Function[],
@@ -52,6 +53,11 @@ global.chrome = {
     onRemoved: {
       addListener(cb: Function) {
         chromeListeners.onRemoved.push(cb);
+      },
+    },
+    onActivated: {
+      addListener(cb: Function) {
+        chromeListeners.onActivated.push(cb);
       },
     },
     onCreated: {
