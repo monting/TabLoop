@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
   skipResurfaceDomains: [],
   priorityResurfaceDomains: [],
   resurfaceCooldown: 5,
+  hijackNewTab: false,
 };
 
 /** Load settings from sync storage, falling back to defaults for missing keys. */

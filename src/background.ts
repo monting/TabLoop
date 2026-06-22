@@ -11,6 +11,27 @@ import { loadSettings } from "./settings.ts";
 import * as state from "./state.ts";
 import { addToStash } from "./stash.ts";
 
+const lastKnownUrls = new Map<number, string>();
+
+// Initialize existing tabs' URLs
+chrome.tabs.query({}).then((tabs) => {
+  for (const t of tabs) {
+    if (t.id != null) {
+      lastKnownUrls.set(t.id, t.url || t.pendingUrl || "");
+    }
+  }
+});
+
+chrome.tabs.onCreated.addListener((tab) => {
+  if (tab.id != null) {
+    lastKnownUrls.set(tab.id, tab.url || tab.pendingUrl || "");
+  }
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  lastKnownUrls.delete(tabId);
+});
+
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
   return {
@@ -93,7 +114,7 @@ chrome.tabs.onCreated.addListener((tab) => {
     .catch((err) => console.error("TabLoop:", err));
 });
 
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender) => {
   if (message === 'escape-hatch' || message === 'escape-hatch-tab') {
     noteEscape(chrome.tabs.create({}).then((t) => t.id));
   } else if (message === 'escape-hatch-window') {
@@ -101,6 +122,8 @@ chrome.runtime.onMessage.addListener((message) => {
   } else if (typeof message === 'object' && message !== null) {
     if (message.type === 'escape-hatch-tab') {
       noteEscape(chrome.tabs.create({ url: message.url }).then((t) => t.id));
+    } else if (message.type === 'revert-new-tab' && sender.tab?.id != null) {
+      void chrome.tabs.update(sender.tab.id, { url: message.prev });
     }
   }
 });
@@ -114,11 +137,11 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
   if (escapeCreations.size) await Promise.allSettled(escapeCreations);
   if (escapeTabIds.delete(tab.id)) return;
 
+  const settings = await loadSettings();
+
   // The extension's own settings page and Chrome's internal pages are exempt from
   // the limit — never block them, even when at capacity.
-  if (isExemptUrl(tab.url || tab.pendingUrl)) return;
-
-  const settings = await loadSettings();
+  if (isExemptUrl(tab.url || tab.pendingUrl, settings)) return;
   const tabs = (await queryScopedTabs(settings, tab.windowId))
     .map(toTabInfo)
     .filter((t): t is TabInfo => t !== null);
@@ -221,6 +244,38 @@ chrome.tabs.onRemoved.addListener(() => void updateBadge());
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
   if (changeInfo.url !== undefined || changeInfo.pinned !== undefined) {
     void updateBadge();
+  }
+});
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  const newUrl = changeInfo.url;
+  if (newUrl === undefined) return;
+
+  const oldUrl = lastKnownUrls.get(tabId) || "";
+  lastKnownUrls.set(tabId, newUrl);
+
+  const wasNewTab = /^chrome:\/\/(newtab|new-tab-page)/i.test(oldUrl) ||
+                    /^chrome-extension:\/\/[^/]+\/.*newtab\.html/i.test(oldUrl);
+  if (!wasNewTab) return;
+
+  const settings = await loadSettings();
+  if (isExemptUrl(newUrl, settings)) return;
+
+  const tabs = (await queryScopedTabs(settings, tab.windowId))
+    .map(toTabInfo)
+    .filter((t): t is TabInfo => t !== null);
+
+  const updatingTab = tabs.find((t) => t.id === tabId);
+  if (updatingTab) {
+    updatingTab.url = newUrl;
+  }
+
+  if (isOverLimit(tabs, settings)) {
+    const alertUrl = chrome.runtime.getURL(
+      `newtab.html?alert=limit&prev=${encodeURIComponent(oldUrl)}`
+    );
+    lastKnownUrls.set(tabId, alertUrl);
+    await chrome.tabs.update(tabId, { url: alertUrl });
   }
 });
 

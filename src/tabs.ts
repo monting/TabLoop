@@ -1,4 +1,5 @@
 import type { Settings } from './types';
+import { DEFAULT_SETTINGS } from './settings.ts';
 
 /** The minimal subset of chrome.tabs.Tab this logic needs (kept chrome-free so it is unit-testable). */
 export interface TabInfo {
@@ -26,14 +27,20 @@ const OPTIONS_PAGE = /^chrome-extension:\/\/[^/]+\/.*options\.html/i;
 /** Chrome's new-tab page stays enforced — it's the vehicle for opening new web tabs. */
 const NEW_TAB_PAGE = /^chrome:\/\/(newtab|new-tab-page)/i;
 
+/** The extension's custom newtab dashboard page. */
+const CUSTOM_NEW_TAB = /^chrome-extension:\/\/[^/]+\/.*newtab\.html/i;
+
 /**
  * URLs exempt from the tab limit entirely: the extension's own settings page and
  * Chrome's internal pages (chrome://…), excluding the new-tab page. Exempt tabs
  * never count toward the limit and are never recycled.
+ *
+ * If hijackNewTab is enabled, custom and default new tab pages are also exempt.
  */
-export function isExemptUrl(url: string | undefined): boolean {
+export function isExemptUrl(url: string | undefined, settings: Settings = DEFAULT_SETTINGS): boolean {
   if (!url) return false;
   if (OPTIONS_PAGE.test(url)) return true;
+  if (settings.hijackNewTab && (CUSTOM_NEW_TAB.test(url) || NEW_TAB_PAGE.test(url))) return true;
   return /^chrome:\/\//i.test(url) && !NEW_TAB_PAGE.test(url);
 }
 
@@ -41,7 +48,7 @@ export function isExemptUrl(url: string | undefined): boolean {
 export function relevantTabs(tabs: TabInfo[], settings: Settings): TabInfo[] {
   return tabs.filter(
     (t) =>
-      !isExemptUrl(t.url) &&
+      !isExemptUrl(t.url, settings) &&
       !(settings.excludePinned && t.pinned),
   );
 }

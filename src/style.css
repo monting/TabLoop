@@ -20,6 +20,7 @@
 body {
   margin: 0;
   width: 450px;
+  min-height: 580px;
   background-color: var(--bg-color);
   background-image:
     radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
@@ -468,4 +469,35 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Dashboard Page Layout */
+body.dashboard-page {
+  display: none;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 40px 24px;
+  min-height: 100vh;
+  overflow-y: auto;
+}
+
+body.dashboard-page.ready {
+  display: block;
+}
+
+body.dashboard-page #app {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Allow upcoming queue to grow as tall as needed to fit all items without vertical scrolling */
+body.dashboard-page .resurface-list {
+  max-height: none;
+  overflow-y: visible;
 }

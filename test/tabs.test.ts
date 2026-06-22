@@ -75,6 +75,21 @@ test('isExemptUrl exempts the settings page and chrome:// pages, but not the new
   assert.equal(isExemptUrl(undefined), false);
 });
 
+test('isExemptUrl exempts new tab pages when hijackNewTab is enabled', () => {
+  const settingsEnabled = { ...DEFAULT_SETTINGS, hijackNewTab: true };
+  const settingsDisabled = { ...DEFAULT_SETTINGS, hijackNewTab: false };
+
+  // When enabled, both overridden and default new tab pages are exempt
+  assert.equal(isExemptUrl('chrome-extension://abc/newtab.html', settingsEnabled), true);
+  assert.equal(isExemptUrl('chrome://newtab/', settingsEnabled), true);
+  assert.equal(isExemptUrl('chrome://new-tab-page/', settingsEnabled), true);
+
+  // When disabled, they are not exempt
+  assert.equal(isExemptUrl('chrome-extension://abc/newtab.html', settingsDisabled), false);
+  assert.equal(isExemptUrl('chrome://newtab/', settingsDisabled), false);
+  assert.equal(isExemptUrl('chrome://new-tab-page/', settingsDisabled), false);
+});
+
 test('exempt tabs do not count toward the limit', () => {
   const tabs = [
     tab(1),

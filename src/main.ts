@@ -24,6 +24,7 @@ interface PopupState {
 
 let currentState: PopupState | null = null;
 let escapeHatchClicked = false;
+let queueExpanded = false;
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
@@ -77,6 +78,49 @@ function formatUrl(url: string): string {
   }
 }
 
+function initSkeleton(): void {
+  app.innerHTML = `
+    <div class="header">
+      <h1>TabLoop</h1>
+      <span class="scope"></span>
+    </div>
+
+    <div class="card meter">
+      <div class="count"></div>
+      <div class="bar"><div class="bar-fill"></div></div>
+      <p class="hint"></p>
+    </div>
+
+    <button class="stash-btn" data-act="stash-current"></button>
+
+    <div class="card stash">
+      <div class="stash-head">
+        <span class="stash-title">Stash</span>
+        <div class="stash-clear-container"></div>
+      </div>
+      <ul class="stash-list"></ul>
+    </div>
+
+    <div class="card resurface-queue">
+      <div class="resurface-head">
+        <span class="resurface-title">Upcoming Queue</span>
+      </div>
+      <ul class="resurface-list"></ul>
+      <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px;"></div>
+    </div>
+
+    <div class="footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+      <button class="link settings" data-act="settings" title="Settings" aria-label="Settings" style="padding-left: 0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease-out;">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+      <div class="escape-container" style="display: flex; align-items: center; gap: 10px;"></div>
+    </div>
+  `;
+}
+
 function render(state: PopupState): void {
   const { settings, count, stash, activeTab, upcomingTabs, times } = state;
   const max = settings.maxTabs;
@@ -86,78 +130,98 @@ function render(state: PopupState): void {
   const remaining = Math.max(0, max - count);
   const canStash = !!activeTab && isStashableUrl(activeTab.url);
 
-  app.innerHTML = `
-    <div class="header">
-      <h1>TabLoop</h1>
-      <span class="scope">${settings.limitScope === 'per-window' ? 'This window' : 'All windows'}</span>
-    </div>
-
-    <div class="card meter ${level}">
-      <div class="count"><span class="cur">${count}</span><span class="slash">/</span><span class="max">${max}</span></div>
-      <div class="bar"><div class="bar-fill" style="width:${Math.min(100, ratio * 100)}%"></div></div>
-      <p class="hint">${
-        atLimit
-          ? 'At limit &mdash; stash a tab to free a slot'
-          : `${remaining} slot${remaining === 1 ? '' : 's'} remaining`
-      }</p>
-    </div>
-
-    <button class="stash-btn" data-act="stash-current"${canStash ? '' : ' disabled'} title="${
-      canStash ? 'Close this tab and save it to your Stash' : "This page can't be stashed"
-    }">Stash this tab</button>
-
-    <div class="card resurface-queue">
-      <div class="resurface-head">
-        <span class="resurface-title">Upcoming Queue (${upcomingTabs.length})</span>
-      </div>
-      <ul class="resurface-list"></ul>
-    </div>
-
-    <div class="card stash">
-      <div class="stash-head">
-        <span class="stash-title">Stash${stash.length ? ` <span class="pill">${stash.length}</span>` : ''}</span>
-        ${stash.length ? '<button class="link" data-act="clear">Clear all</button>' : ''}
-      </div>
-      <ul class="stash-list"></ul>
-    </div>
-
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
-      <button class="link settings" data-act="settings" title="Settings" aria-label="Settings" style="padding-left: 0;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease-out;">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-      </button>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        ${escapeHatchClicked ? `
-          <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Escape Hatch</span>
-          <div style="display: flex; gap: 6px;">
-            <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? '' : ' disabled'}>+ Tab</button>
-            <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? '' : ' disabled'}>+ Window</button>
-          </div>
-        ` : `
-          <button class="link" data-act="click-escape-hatch" title="Click to show escape actions" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); cursor: pointer; padding: 0;">Escape Hatch</button>
-        `}
-      </div>
-    </div>
-  `;
-
-  const resurfaceList = app.querySelector<HTMLUListElement>('.resurface-list')!;
-  if (upcomingTabs.length === 0) {
-    appendEmptyItem(resurfaceList, 'No upcoming tabs in queue.');
-  } else {
-    upcomingTabs.forEach((tab, index) => {
-      resurfaceList.append(renderUpcomingItem(tab, index, times));
-    });
+  if (!app.querySelector('.header')) {
+    initSkeleton();
   }
 
+  const scopeEl = app.querySelector<HTMLSpanElement>('.scope')!;
+  scopeEl.textContent = settings.limitScope === 'per-window' ? 'This window' : 'All windows';
+
+  const meterCard = app.querySelector<HTMLDivElement>('.meter')!;
+  meterCard.className = `card meter ${level}`;
+
+  const countEl = meterCard.querySelector<HTMLDivElement>('.count')!;
+  countEl.innerHTML = `<span class="cur">${count}</span><span class="slash">/</span><span class="max">${max}</span>`;
+
+  const barFill = meterCard.querySelector<HTMLDivElement>('.bar-fill')!;
+  barFill.style.width = `${Math.min(100, ratio * 100)}%`;
+
+  const hintEl = meterCard.querySelector<HTMLParagraphElement>('.hint')!;
+  hintEl.innerHTML = atLimit
+    ? 'At limit &mdash; stash a tab to free a slot'
+    : `${remaining} slot${remaining === 1 ? '' : 's'} remaining`;
+
+  const stashBtn = app.querySelector<HTMLButtonElement>('.stash-btn')!;
+  stashBtn.textContent = 'Stash this tab';
+  stashBtn.disabled = !canStash;
+  stashBtn.title = canStash ? 'Close this tab and save it to your Stash' : "This page can't be stashed";
+
+  const stashTitle = app.querySelector<HTMLSpanElement>('.stash-title')!;
+  stashTitle.innerHTML = `Stash${stash.length ? ` <span class="pill">${stash.length}</span>` : ''}`;
+
+  const stashClearContainer = app.querySelector<HTMLDivElement>('.stash-clear-container')!;
+  stashClearContainer.innerHTML = stash.length ? '<button class="link" data-act="clear">Clear all</button>' : '';
+
   const list = app.querySelector<HTMLUListElement>('.stash-list')!;
+  list.innerHTML = '';
   if (stash.length === 0) {
     appendEmptyItem(list, 'Nothing stashed yet.');
   } else {
     for (const item of stash) {
       list.append(renderItem(item, atLimit, escapeHatchClicked));
     }
+  }
+
+  const resurfaceTitle = app.querySelector<HTMLSpanElement>('.resurface-title')!;
+  resurfaceTitle.textContent = `Upcoming Queue (${upcomingTabs.length})`;
+
+  const resurfaceList = app.querySelector<HTMLUListElement>('.resurface-list')!;
+  resurfaceList.innerHTML = '';
+  const toggleContainer = app.querySelector<HTMLDivElement>('.resurface-toggle-container')!;
+
+  if (upcomingTabs.length === 0) {
+    appendEmptyItem(resurfaceList, 'No upcoming tabs in queue.');
+    toggleContainer.style.display = 'none';
+  } else {
+    const showAll = queueExpanded || upcomingTabs.length <= 5;
+    const itemsToShow = showAll ? upcomingTabs : upcomingTabs.slice(0, 5);
+
+    itemsToShow.forEach((tab, index) => {
+      resurfaceList.append(renderUpcomingItem(tab, index, times));
+    });
+
+    if (upcomingTabs.length > 5) {
+      toggleContainer.style.display = 'flex';
+      toggleContainer.innerHTML = '';
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'link';
+      toggleBtn.dataset.act = 'toggle-queue-expand';
+      toggleBtn.textContent = queueExpanded
+        ? 'Show less'
+        : `Show all (+${upcomingTabs.length - 5} more)`;
+      toggleBtn.style.fontWeight = '600';
+      toggleBtn.style.color = 'var(--accent)';
+
+      toggleContainer.append(toggleBtn);
+    } else {
+      toggleContainer.style.display = 'none';
+    }
+  }
+
+  const escapeContainer = app.querySelector<HTMLDivElement>('.escape-container')!;
+  if (escapeHatchClicked) {
+    escapeContainer.innerHTML = `
+      <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Escape Hatch</span>
+      <div style="display: flex; gap: 6px;">
+        <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? '' : ' disabled'}>+ Tab</button>
+        <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? '' : ' disabled'}>+ Window</button>
+      </div>
+    `;
+  } else {
+    escapeContainer.innerHTML = `
+      <button class="link" data-act="click-escape-hatch" title="Click to show escape actions" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); cursor: pointer; padding: 0;">Escape Hatch</button>
+    `;
   }
 }
 
@@ -263,7 +327,16 @@ function renderUpcomingItem(tab: chrome.tabs.Tab, index: number, times: TabTimes
   timeBadge.textContent = formatElapsed(resolvedTime);
   timeBadge.title = resolvedTime > 0 ? new Date(resolvedTime).toLocaleString() : 'Never accessed';
 
-  li.append(numBadge, focusBtn, favicon, label, timeBadge);
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'remove';
+  closeBtn.textContent = '×';
+  if (tab.id != null) {
+    closeBtn.dataset.id = tab.id.toString();
+  }
+  closeBtn.dataset.act = 'close-tab';
+  closeBtn.title = 'Close tab';
+
+  li.append(numBadge, focusBtn, favicon, label, timeBadge, closeBtn);
   return li;
 }
 
@@ -313,6 +386,10 @@ app.addEventListener('click', async (e) => {
       escapeHatchClicked = true;
       await refresh();
       break;
+    case 'toggle-queue-expand':
+      queueExpanded = !queueExpanded;
+      await refresh();
+      break;
     case 'focus-tab': {
       const tabIdStr = target.dataset.id;
       const winIdStr = target.dataset.windowId;
@@ -324,6 +401,15 @@ app.addEventListener('click', async (e) => {
           await chrome.windows.update(winId, { focused: true });
         }
         window.close();
+      }
+      break;
+    }
+    case 'close-tab': {
+      const tabIdStr = target.dataset.id;
+      if (tabIdStr) {
+        const tabId = parseInt(tabIdStr, 10);
+        await chrome.tabs.remove(tabId);
+        await refresh();
       }
       break;
     }

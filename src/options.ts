@@ -8,6 +8,7 @@ const limitBehaviorSelect = document.getElementById('limitBehavior') as HTMLSele
 const oldestDefinitionSelect = document.getElementById('oldestDefinition') as HTMLSelectElement;
 const syncStashCheckbox = document.getElementById('syncStash') as HTMLInputElement;
 const excludePinnedCheckbox = document.getElementById('excludePinned') as HTMLInputElement;
+const hijackNewTabCheckbox = document.getElementById('hijackNewTab') as HTMLInputElement;
 const statusContainer = document.getElementById('statusContainer') as HTMLDivElement;
 const statusIcon = document.getElementById('statusIcon') as HTMLSpanElement;
 const statusText = document.getElementById('statusText') as HTMLSpanElement;
@@ -245,6 +246,7 @@ void loadSettings().then((settings) => {
   oldestDefinitionSelect.value = settings.oldestDefinition;
   syncStashCheckbox.checked = !!settings.syncStash;
   excludePinnedCheckbox.checked = settings.excludePinned;
+  hijackNewTabCheckbox.checked = !!settings.hijackNewTab;
   resurfaceCooldownInput.value = settings.resurfaceCooldown.toString();
   skipDomains = settings.skipResurfaceDomains || [];
   priorityDomains = settings.priorityResurfaceDomains || [];
@@ -308,6 +310,7 @@ async function saveCurrentSettings() {
     skipResurfaceDomains: skipDomains,
     priorityResurfaceDomains: priorityDomains,
     resurfaceCooldown: readResurfaceCooldown(),
+    hijackNewTab: hijackNewTabCheckbox.checked,
   };
 
   // Clamp input values back to field limits if focus is lost or if changed by adjust buttons.
@@ -368,3 +371,4 @@ limitBehaviorSelect.addEventListener('change', triggerSave);
 oldestDefinitionSelect.addEventListener('change', triggerSave);
 syncStashCheckbox.addEventListener('change', triggerSave);
 excludePinnedCheckbox.addEventListener('change', triggerSave);
+hijackNewTabCheckbox.addEventListener('change', triggerSave);
