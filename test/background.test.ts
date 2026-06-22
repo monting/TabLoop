@@ -11,6 +11,7 @@ const chromeListeners = {
   onUpdated: [] as Function[],
   onMessage: [] as Function[],
   storageChanged: [] as Function[],
+  contextMenusClicked: [] as Function[],
 };
 
 const mockStorage = {
@@ -96,6 +97,16 @@ global.chrome = {
   action: {
     setBadgeBackgroundColor: async () => {},
     setBadgeText: async () => {},
+  },
+  contextMenus: {
+    create: (createProperties: any) => {
+      callLog.push({ method: 'contextMenus.create', args: [createProperties] });
+    },
+    onClicked: {
+      addListener(cb: Function) {
+        chromeListeners.contextMenusClicked.push(cb);
+      },
+    },
   },
   storage: {
     session: {
@@ -825,6 +836,93 @@ test('when a new tab in a new window triggers recycling and limitBehavior is foc
     args: [1, { focused: true }],
   }, 'Expected windows.update to focus the original window (1)');
 });
+
+test('onInstalled registers context menus', async () => {
+  const originalCallLogLength = callLog.length;
+  const onInstalledListener = chromeListeners.onInstalled[0];
+  assert.ok(onInstalledListener, 'background.ts should register an onInstalled listener');
+  
+  onInstalledListener();
+  
+  const contextMenuCreates = callLog.slice(originalCallLogLength).filter(
+    (log) => log.method === 'contextMenus.create'
+  );
+  
+  assert.equal(contextMenuCreates.length, 2, 'Expected 2 context menus to be created');
+  assert.deepEqual(contextMenuCreates[0].args[0], {
+    id: 'escape-hatch-tab',
+    title: 'New Escape Hatch Tab',
+    contexts: ['action', 'page'],
+  });
+  assert.deepEqual(contextMenuCreates[1].args[0], {
+    id: 'escape-hatch-window',
+    title: 'New Escape Hatch Window',
+    contexts: ['action', 'page'],
+  });
+});
+
+test('clicking context menu item for escape hatch tab bypasses the limit', async () => {
+  const originalTabsCreate = global.chrome.tabs.create;
+  let tabCreatedId: number | undefined;
+  
+  global.chrome.tabs.create = async (options: any) => {
+    tabCreatedId = 101;
+    return { id: tabCreatedId, windowId: 1, url: options?.url } as any;
+  };
+  
+  const onClickedListener = chromeListeners.contextMenusClicked[0];
+  assert.ok(onClickedListener, 'background.ts should register a contextMenus.onClicked listener');
+  
+  callLog.length = 0;
+  await onClickedListener({ menuItemId: 'escape-hatch-tab' });
+  
+  assert.equal(tabCreatedId, 101, 'Expected a new tab to be created');
+  
+  const onCreatedListener = chromeListeners.onCreated[0];
+  await onCreatedListener({
+    id: 101,
+    pinned: false,
+    windowId: 1,
+    url: 'https://anyurl.com',
+  });
+  
+  const hasRemove = callLog.some(log => log.method === 'remove');
+  assert.ok(!hasRemove, 'Expected escape tab to NOT be removed');
+  
+  global.chrome.tabs.create = originalTabsCreate;
+});
+
+test('clicking context menu item for escape hatch window bypasses the limit', async () => {
+  const originalWindowsCreate = global.chrome.windows.create;
+  let windowCreatedTabId: number | undefined;
+  
+  global.chrome.windows.create = async (options: any) => {
+    windowCreatedTabId = 102;
+    return { id: 2, tabs: [{ id: windowCreatedTabId }] } as any;
+  };
+  
+  const onClickedListener = chromeListeners.contextMenusClicked[0];
+  assert.ok(onClickedListener, 'background.ts should register a contextMenus.onClicked listener');
+  
+  callLog.length = 0;
+  await onClickedListener({ menuItemId: 'escape-hatch-window' });
+  
+  assert.equal(windowCreatedTabId, 102, 'Expected a new window to be created');
+  
+  const onCreatedListener = chromeListeners.onCreated[0];
+  await onCreatedListener({
+    id: 102,
+    pinned: false,
+    windowId: 2,
+    url: 'https://anyurl.com',
+  });
+  
+  const hasRemove = callLog.some(log => log.method === 'remove');
+  assert.ok(!hasRemove, 'Expected escape window tab to NOT be removed');
+  
+  global.chrome.windows.create = originalWindowsCreate;
+});
+
 
 
 

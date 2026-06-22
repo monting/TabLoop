@@ -47,6 +47,18 @@ async function seedExistingTabs(): Promise<void> {
 
 chrome.runtime.onInstalled.addListener(() => {
   void seedExistingTabs();
+
+  chrome.contextMenus.create({
+    id: "escape-hatch-tab",
+    title: "New Escape Hatch Tab",
+    contexts: ["action", "page"],
+  });
+
+  chrome.contextMenus.create({
+    id: "escape-hatch-window",
+    title: "New Escape Hatch Window",
+    contexts: ["action", "page"],
+  });
 });
 chrome.runtime.onStartup.addListener(() => {
   void seedExistingTabs();
@@ -99,6 +111,14 @@ chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'escape-hatch-tab') {
       noteEscape(chrome.tabs.create({ url: message.url }).then((t) => t.id));
     }
+  }
+});
+
+chrome.contextMenus.onClicked.addListener((info) => {
+  if (info.menuItemId === "escape-hatch-tab") {
+    noteEscape(chrome.tabs.create({}).then((t) => t.id));
+  } else if (info.menuItemId === "escape-hatch-window") {
+    noteEscape(chrome.windows.create({}).then((w) => w?.tabs?.[0]?.id));
   }
 });
 
