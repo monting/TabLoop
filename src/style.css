@@ -501,3 +501,74 @@ body.dashboard-page .resurface-list {
   max-height: none;
   overflow-y: visible;
 }
+
+/* Toast Notification (similar style to settings statusContainer) */
+.toast-notification {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translate(-50%, -20px);
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+  
+  color: #f87171; /* red-400 */
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(15, 23, 42, 0.9); /* slate-900 with high opacity for readability */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.toast-notification.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+/* Escape Hatch Banner on New Tab/Window */
+.escape-hatch-banner {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%);
+  border: 1px dashed rgba(139, 92, 246, 0.35);
+  border-radius: 16px;
+  padding: 16px 20px;
+  text-align: center;
+  margin-bottom: 4px;
+  backdrop-filter: blur(10px);
+  animation: pulseGlow 3s infinite ease-in-out;
+}
+
+.escape-hatch-banner h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: linear-gradient(to right, #60a5fa, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.escape-hatch-banner p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(139, 92, 246, 0.25);
+    border-color: rgba(139, 92, 246, 0.6);
+  }
+}

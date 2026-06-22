@@ -23,6 +23,7 @@ interface DashboardState {
 }
 
 let currentState: DashboardState | null = null;
+let escapeHatchClicked = false;
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
@@ -96,7 +97,7 @@ function getFaviconUrl(pageUrl: string): string {
   return url.toString();
 }
 
-function renderItem(item: StashItem, atLimit: boolean): HTMLLIElement {
+function renderItem(item: StashItem, atLimit: boolean, escapeHatchActive: boolean): HTMLLIElement {
   const li = document.createElement('li');
   li.className = 'stash-item';
 
@@ -105,7 +106,7 @@ function renderItem(item: StashItem, atLimit: boolean): HTMLLIElement {
   restore.textContent = 'Restore';
   restore.dataset.url = item.url;
   restore.dataset.act = 'restore';
-  if (atLimit) {
+  if (atLimit && !escapeHatchActive) {
     restore.disabled = true;
     restore.title = 'Stash or close a tab to make room first';
   }
@@ -193,6 +194,7 @@ function appendEmptyItem(list: HTMLUListElement, text: string): void {
 
 function initSkeleton(): void {
   app.innerHTML = `
+    <div class="escape-hatch-container"></div>
     <div class="header">
       <h1>TabLoop Dashboard</h1>
       <div style="display: flex; gap: 12px; align-items: center;">
@@ -226,6 +228,10 @@ function initSkeleton(): void {
       </div>
       <ul class="resurface-list"></ul>
     </div>
+
+    <div class="footer" style="display: flex; justify-content: flex-end; align-items: center; margin-top: -8px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+      <div class="escape-container" style="display: flex; align-items: center; gap: 10px;"></div>
+    </div>
   `;
 }
 
@@ -243,6 +249,23 @@ function render(state: DashboardState): void {
 
   const scopeEl = app.querySelector<HTMLSpanElement>('.scope')!;
   scopeEl.textContent = settings.limitScope === 'per-window' ? 'This window' : 'All windows';
+
+  const params = new URLSearchParams(window.location.search);
+  const escapeType = params.get('escape');
+  const bannerContainer = app.querySelector<HTMLDivElement>('.escape-hatch-container')!;
+  
+  if (escapeType === 'tab' || escapeType === 'window') {
+    bannerContainer.innerHTML = `
+      <div class="escape-hatch-banner">
+        <h2>Escape Hatch New ${escapeType === 'tab' ? 'Tab' : 'Window'}</h2>
+        <p>This page bypasses your tab limit. You can navigate freely to any URL.</p>
+      </div>
+    `;
+    bannerContainer.style.display = 'block';
+  } else {
+    bannerContainer.innerHTML = '';
+    bannerContainer.style.display = 'none';
+  }
 
   const meterCard = app.querySelector<HTMLDivElement>('.meter')!;
   meterCard.className = `card meter ${level}`;
@@ -283,21 +306,52 @@ function render(state: DashboardState): void {
     appendEmptyItem(list, 'Nothing stashed yet.');
   } else {
     for (const item of stash) {
-      list.append(renderItem(item, atLimit));
+      list.append(renderItem(item, atLimit, escapeHatchClicked));
     }
   }
+
+  const escapeContainer = app.querySelector<HTMLDivElement>('.escape-container')!;
+  if (escapeHatchClicked) {
+    escapeContainer.innerHTML = `
+      <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Escape Hatch</span>
+      <div style="display: flex; gap: 6px;">
+        <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? '' : ' disabled'}>+ Tab</button>
+        <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? '' : ' disabled'}>+ Window</button>
+      </div>
+    `;
+  } else {
+    escapeContainer.innerHTML = `
+      <button class="link" data-act="click-escape-hatch" title="Click to show escape actions" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); cursor: pointer; padding: 0;">Escape Hatch</button>
+    `;
+  }
+}
+
+function showToast(message: string): void {
+  const toast = document.querySelector<HTMLDivElement>('#toast');
+  if (!toast) return;
+
+  toast.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <span>${message}</span>
+  `;
+
+  toast.classList.add('visible');
+
+  setTimeout(() => {
+    toast.classList.remove('visible');
+  }, 4000);
 }
 
 async function refresh(): Promise<void> {
   const params = new URLSearchParams(window.location.search);
   if (params.get('alert') === 'limit') {
-    document.body.classList.add('ready');
-    alert('Tab limit reached!');
-    const prev = params.get('prev');
-    if (prev) {
-      chrome.runtime.sendMessage({ type: 'revert-new-tab', prev });
-    }
-    return;
+    showToast('Tab limit reached!');
+    // Clean up the URL in the address bar without reloading
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
 
   try {
@@ -366,10 +420,29 @@ app.addEventListener('click', async (e) => {
       break;
     }
 
+    case 'escape-tab':
+      if ((target as HTMLButtonElement).disabled) break;
+      chrome.runtime.sendMessage('escape-hatch-tab');
+      break;
+
+    case 'escape-window':
+      if ((target as HTMLButtonElement).disabled) break;
+      chrome.runtime.sendMessage('escape-hatch-window');
+      break;
+
+    case 'click-escape-hatch':
+      escapeHatchClicked = true;
+      await refresh();
+      break;
+
     case 'restore':
-      if (url && !target.hasAttribute('disabled')) {
+      if (url && !(target as HTMLButtonElement).disabled) {
         await removeFromStash(url);
-        await chrome.tabs.create({ url });
+        if (escapeHatchClicked) {
+          await chrome.runtime.sendMessage({ type: 'escape-hatch-tab', url });
+        } else {
+          await chrome.tabs.create({ url });
+        }
         await refresh();
       }
       break;
