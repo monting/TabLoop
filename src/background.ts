@@ -95,6 +95,10 @@ chrome.runtime.onMessage.addListener((message) => {
     noteEscape(chrome.tabs.create({}).then((t) => t.id));
   } else if (message === 'escape-hatch-window') {
     noteEscape(chrome.windows.create({}).then((w) => w?.tabs?.[0]?.id));
+  } else if (typeof message === 'object' && message !== null) {
+    if (message.type === 'escape-hatch-tab') {
+      noteEscape(chrome.tabs.create({ url: message.url }).then((t) => t.id));
+    }
   }
 });
 

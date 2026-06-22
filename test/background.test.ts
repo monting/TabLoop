@@ -682,6 +682,38 @@ test('a tab opened via the escape hatch bypasses the limit and is not recycled',
   assert.deepEqual(recycling, [], 'Escape tab must not trigger any recycling');
 });
 
+test('a tab opened via the escape hatch object message with a URL bypasses the limit and is not recycled', async () => {
+  const originalSettings = { ...mockStorage.sync.settings };
+  mockStorage.sync.settings.maxTabs = 2; // query returns 3 tabs => over limit
+  callLog.length = 0;
+
+  // Track the URL passed to create
+  let createdUrl: string | undefined;
+  const originalCreate = global.chrome.tabs.create;
+  global.chrome.tabs.create = async (options: any) => {
+    createdUrl = options?.url;
+    return { id: 99, windowId: 1 };
+  };
+
+  // The escape message creates a tab (mock returns id 99); register the intent.
+  const onMessage = chromeListeners.onMessage[0];
+  onMessage({ type: 'escape-hatch-tab', url: 'https://restore-me.com' });
+  // Let chrome.tabs.create resolve so id 99 is recorded as an escape tab.
+  await new Promise((r) => setTimeout(r, 0));
+
+  // Its onCreated then fires; handleCreated must let it through untouched.
+  const onCreated = chromeListeners.onCreated[0];
+  onCreated({ id: 99, pinned: false, windowId: 1, url: 'https://restore-me.com' });
+  await new Promise((r) => setTimeout(r, 10));
+
+  global.chrome.tabs.create = originalCreate;
+  mockStorage.sync.settings = originalSettings;
+
+  assert.equal(createdUrl, 'https://restore-me.com', 'Create should be called with the restored URL');
+  const recycling = callLog.filter((c) => ['move', 'remove', 'update'].includes(c.method));
+  assert.deepEqual(recycling, [], 'Restored escape tab must not trigger any recycling');
+});
+
 test('an unrelated tab created while an escape is in-flight is still enforced', async () => {
   const originalSettings = { ...mockStorage.sync.settings };
   mockStorage.sync.settings.maxTabs = 2;
