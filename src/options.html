@@ -96,12 +96,39 @@
                 transform: translateY(-1px);
                 box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
             }
-            #status {
-                margin-left: 15px;
-                color: #4ade80;
-                opacity: 0;
-                transition: opacity 0.3s;
+            #statusContainer {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                margin-top: 30px;
+                padding: 10px 16px;
+                border-radius: 20px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                font-size: 13px;
                 font-weight: 500;
+                opacity: 0;
+                transition: opacity 0.3s, transform 0.3s;
+                transform: translateY(5px);
+            }
+            #statusContainer.visible {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            #statusContainer.saving {
+                color: rgba(255, 255, 255, 0.6);
+            }
+            #statusContainer.saved {
+                color: #4ade80;
+                border-color: rgba(74, 222, 128, 0.2);
+                background: rgba(74, 222, 128, 0.05);
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            .spinner {
+                animation: spin 1s linear infinite;
             }
 
             .input-group {
@@ -454,9 +481,9 @@
                 </div>
             </div>
 
-            <div style="display: flex; align-items: center; margin-top: 30px">
-                <button id="saveBtn">Save Settings</button>
-                <span id="status">Settings saved successfully!</span>
+            <div id="statusContainer">
+                <span id="statusIcon"></span>
+                <span id="statusText">Settings saved automatically!</span>
             </div>
         </div>
         <script type="module" src="/src/options.ts"></script>
