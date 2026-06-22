@@ -4,12 +4,10 @@ import {
   countRelevantTabs,
   isExemptUrl,
   isOverLimit,
-  isStashableUrl,
   selectOldestTab,
 } from "./tabs.ts";
 import { loadSettings } from "./settings.ts";
 import * as state from "./state.ts";
-import { addToStash } from "./stash.ts";
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
@@ -135,13 +133,9 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
   // Nothing is recyclable (all pinned/protected) — let the new tab through.
   if (!oldest) return;
 
-  // Save the blocked destination to the stash so it isn't lost, then close the
-  // new tab and surface the oldest one to be dealt with.
-  const blockedUrl = tab.pendingUrl || tab.url;
-  if (isStashableUrl(blockedUrl)) {
-    await addToStash(blockedUrl);
-  }
-
+  // Close the blocked new tab and surface the oldest one to be dealt with. The
+  // stash is only ever populated by an explicit user action (the popup's "Stash
+  // this tab" button), never automatically.
   let targetWindowId = tab.windowId;
   if (settings.limitBehavior === "focus") {
     targetWindowId = oldest.windowId;
