@@ -21,6 +21,7 @@ interface PopupState {
 }
 
 let currentState: PopupState | null = null;
+let escapeHatchClicked = false;
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
@@ -113,11 +114,15 @@ function render(state: PopupState): void {
         </svg>
       </button>
       <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Escape Hatch</span>
-        <div style="display: flex; gap: 6px;">
-          <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? "" : " disabled"}>+ Tab</button>
-          <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? "" : " disabled"}>+ Window</button>
-        </div>
+        ${escapeHatchClicked ? `
+          <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Escape Hatch</span>
+          <div style="display: flex; gap: 6px;">
+            <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? "" : " disabled"}>+ Tab</button>
+            <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? "" : " disabled"}>+ Window</button>
+          </div>
+        ` : `
+          <button class="link" data-act="click-escape-hatch" title="Click to show escape actions" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); cursor: pointer; padding: 0;">Escape Hatch</button>
+        `}
       </div>
     </div>
   `;
@@ -130,7 +135,7 @@ function render(state: PopupState): void {
     list.append(empty);
   } else {
     for (const item of stash) {
-      list.append(renderItem(item, atLimit));
+      list.append(renderItem(item, atLimit, escapeHatchClicked));
     }
   }
 }
@@ -142,7 +147,7 @@ function getFaviconUrl(pageUrl: string): string {
   return url.toString();
 }
 
-function renderItem(item: StashItem, atLimit: boolean): HTMLLIElement {
+function renderItem(item: StashItem, atLimit: boolean, escapeHatchClicked: boolean): HTMLLIElement {
   const li = document.createElement("li");
   li.className = "stash-item";
 
@@ -151,7 +156,7 @@ function renderItem(item: StashItem, atLimit: boolean): HTMLLIElement {
   restore.textContent = "Restore";
   restore.dataset.url = item.url;
   restore.dataset.act = "restore";
-  if (atLimit) {
+  if (atLimit && !escapeHatchClicked) {
     restore.disabled = true;
     restore.title = "Stash or close a tab to make room first";
   }
@@ -219,10 +224,18 @@ app.addEventListener("click", async (e) => {
       if (url) await removeFromStash(url);
       await refresh();
       break;
+    case "click-escape-hatch":
+      escapeHatchClicked = true;
+      await refresh();
+      break;
     case "restore":
       if (url && !(target as HTMLButtonElement).disabled) {
         await removeFromStash(url);
-        await chrome.tabs.create({ url });
+        if (escapeHatchClicked) {
+          await chrome.runtime.sendMessage({ type: "escape-hatch-tab", url });
+        } else {
+          await chrome.tabs.create({ url });
+        }
         window.close();
       }
       break;

@@ -16,6 +16,7 @@ import type { Settings } from '../src/types.ts';
 const baseSettings: Settings = {
   maxTabs: 3,
   limitScope: 'global',
+  limitBehavior: 'focus',
   oldestDefinition: 'creation',
   excludePinned: true,
   syncStash: false,
