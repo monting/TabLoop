@@ -135,20 +135,9 @@ function renderItem(item: StashItem, atLimit: boolean, escapeHatchActive: boolea
   return li;
 }
 
-function renderUpcomingItem(tab: chrome.tabs.Tab, index: number, times: TabTimes): HTMLLIElement {
+function renderUpcomingItem(tab: chrome.tabs.Tab, times: TabTimes): HTMLLIElement {
   const li = document.createElement('li');
   li.className = 'resurface-item';
-
-  const numBadge = document.createElement('span');
-  numBadge.className = 'num-badge';
-  numBadge.textContent = `#${index + 1}`;
-
-  const focusBtn = document.createElement('button');
-  focusBtn.className = 'focus-btn';
-  focusBtn.textContent = 'Focus';
-  focusBtn.dataset.act = 'focus-tab';
-  focusBtn.dataset.id = tab.id?.toString();
-  focusBtn.dataset.windowId = tab.windowId?.toString();
 
   const favicon = document.createElement('img');
   favicon.className = 'favicon';
@@ -158,10 +147,14 @@ function renderUpcomingItem(tab: chrome.tabs.Tab, index: number, times: TabTimes
     favicon.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
   };
 
-  const label = document.createElement('span');
+  const label = document.createElement('a');
   label.className = 'title';
+  label.href = '#';
   label.textContent = tab.title?.trim() || (tab.url ? formatUrl(tab.url) : 'Untitled');
   label.title = tab.url || '';
+  label.dataset.act = 'focus-tab';
+  label.dataset.id = tab.id?.toString();
+  label.dataset.windowId = tab.windowId?.toString();
 
   const manualTime = tab.id != null ? times.lastAccessed?.[tab.id] : undefined;
   const nativeTime = tab.lastAccessed;
@@ -181,7 +174,7 @@ function renderUpcomingItem(tab: chrome.tabs.Tab, index: number, times: TabTimes
   closeBtn.dataset.act = 'close-tab';
   closeBtn.title = 'Close tab';
 
-  li.append(numBadge, focusBtn, favicon, label, timeBadge, closeBtn);
+  li.append(favicon, label, timeBadge, closeBtn);
   return li;
 }
 
@@ -295,8 +288,8 @@ function render(state: DashboardState): void {
   if (upcomingTabs.length === 0) {
     appendEmptyItem(resurfaceList, 'No upcoming tabs in queue.');
   } else {
-    upcomingTabs.forEach((tab, index) => {
-      resurfaceList.append(renderUpcomingItem(tab, index, times));
+    upcomingTabs.forEach((tab) => {
+      resurfaceList.append(renderUpcomingItem(tab, times));
     });
   }
 
@@ -393,6 +386,7 @@ app.addEventListener('click', async (e) => {
       break;
 
     case 'focus-tab': {
+      e.preventDefault();
       const tabIdStr = target.dataset.id;
       const windowIdStr = target.dataset.windowId;
       if (tabIdStr) {
