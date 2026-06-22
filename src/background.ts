@@ -146,7 +146,7 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
 
   // The extension's own settings page and Chrome's internal pages are exempt from
   // the limit — never block them, even when at capacity.
-  if (isExemptUrl(tab.url || tab.pendingUrl, settings)) return;
+  if (isExemptUrl(tab.url || tab.pendingUrl)) return;
   const tabs = (await queryScopedTabs(settings, tab.windowId))
     .map(toTabInfo)
     .filter((t): t is TabInfo => t !== null);
@@ -265,7 +265,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (!wasNewTab) return;
 
   const settings = await loadSettings();
-  if (isExemptUrl(newUrl, settings)) return;
+  if (isExemptUrl(newUrl)) return;
 
   if (escapeTabIdsForNavigation.has(tabId)) {
     escapeTabIdsForNavigation.delete(tabId);

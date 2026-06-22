@@ -12,6 +12,10 @@ TabLoop is a modern Chrome Extension designed to help you conquer tab hoarding. 
 - **System-Page Exemption**: Chrome's internal pages (`chrome://…`) and TabLoop's own settings page never count toward your limit and are never recycled — only the new-tab page stays enforced.
 - **Premium Interface**: Configure your preferences via a sleek, dark-glassmorphism options page.
 
+## Design Notes
+
+- **No "Hijack New Tab Page" feature (removed).** TabLoop deliberately does not override Chrome's new-tab page. An earlier version shipped a toggle that swapped the new-tab page for a TabLoop dashboard, but Manifest V3 registers `chrome_url_overrides` statically — there is no API to turn the override off at runtime. That made the toggle's "off" state impossible to honor: with the override always active, we could never fall back to the browser's default (blank) new-tab page, so turning the setting on or off had no real effect. The feature (the override, the `hijackNewTab` setting, and the new-tab exemption it implied) was removed entirely rather than ship a control that can't work. New tabs now always show Chrome's native new-tab page.
+
 ## How to Run Locally for Development
 
 This extension is built with Vite, TypeScript, and standard Manifest V3.

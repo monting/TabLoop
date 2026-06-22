@@ -356,10 +356,6 @@ async function refresh(): Promise<void> {
 
   try {
     currentState = await readState();
-    if (!currentState.settings.hijackNewTab) {
-      chrome.tabs.update({ url: 'chrome://newtab/' });
-      return;
-    }
     render(currentState);
     document.body.classList.add('ready');
   } catch (err) {

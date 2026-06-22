@@ -15,9 +15,6 @@
     "page": "src/options.html",
     "open_in_tab": true
   },
-  "chrome_url_overrides": {
-    "newtab": "newtab.html"
-  },
   "background": {
     "service_worker": "src/background.ts",
     "type": "module"

@@ -8,7 +8,6 @@ export interface Settings {
   skipResurfaceDomains: string[];
   priorityResurfaceDomains: string[];
   resurfaceCooldown: number;
-  hijackNewTab: boolean;
 }
 
 /** A page saved to the Stash — parked to free a slot, or blocked at the limit. */
