@@ -37,7 +37,10 @@ function getFavicon(item: string): string {
     if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
       clean = 'https://' + clean;
     }
-    return `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(clean)}&size=32`;
+    const url = new URL(chrome.runtime.getURL('/_favicon/'));
+    url.searchParams.set('pageUrl', clean);
+    url.searchParams.set('size', '32');
+    return url.toString();
   }
   return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
 }
