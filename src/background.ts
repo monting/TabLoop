@@ -139,12 +139,16 @@ async function handleCreated(tab: chrome.tabs.Tab): Promise<void> {
   }
 
   let targetWindowId = tab.windowId;
-  if (oldest.windowId !== tab.windowId) {
-    try {
-      await chrome.tabs.move(oldest.id, { windowId: tab.windowId, index: -1 });
-    } catch (err) {
-      console.warn("TabLoop: Could not move oldest tab to new window:", err);
-      targetWindowId = oldest.windowId;
+  if (settings.limitBehavior === "focus") {
+    targetWindowId = oldest.windowId;
+  } else {
+    if (oldest.windowId !== tab.windowId) {
+      try {
+        await chrome.tabs.move(oldest.id, { windowId: tab.windowId, index: -1 });
+      } catch (err) {
+        console.warn("TabLoop: Could not move oldest tab to new window:", err);
+        targetWindowId = oldest.windowId;
+      }
     }
   }
 

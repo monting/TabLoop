@@ -158,6 +158,7 @@ global.chrome = {
 mockStorage.sync.settings = {
   maxTabs: 2,
   limitScope: 'global',
+  limitBehavior: 'move',
   oldestDefinition: 'lru',
   excludePinned: true,
   syncStash: false,
@@ -210,6 +211,7 @@ test('getStash and setStash use storage.local when syncStash is false', async ()
   mockStorage.sync.settings = {
     maxTabs: 5,
     limitScope: 'global',
+    limitBehavior: 'move',
     oldestDefinition: 'lru',
     excludePinned: true,
     syncStash: false,
@@ -230,6 +232,7 @@ test('getStash and setStash use storage.sync when syncStash is true', async () =
   mockStorage.sync.settings = {
     maxTabs: 5,
     limitScope: 'global',
+    limitBehavior: 'move',
     oldestDefinition: 'lru',
     excludePinned: true,
     syncStash: true,
@@ -250,6 +253,7 @@ test('setStash prunes oldest items to stay under 8KB limit when using sync stora
   mockStorage.sync.settings = {
     maxTabs: 5,
     limitScope: 'global',
+    limitBehavior: 'move',
     oldestDefinition: 'lru',
     excludePinned: true,
     syncStash: true,
@@ -721,6 +725,73 @@ test('an unrelated tab created while an escape is in-flight is still enforced', 
     callLog.some((c) => c.method === 'remove' && c.args[0] === 7),
     'The unrelated tab (7) should be recycled, not exempted by the pending escape',
   );
+});
+
+test('when a new tab in a new window triggers recycling and limitBehavior is focus, the oldest tab is NOT moved but is focused/activated in its window', async () => {
+  // Save original settings
+  const originalSettings = { ...mockStorage.sync.settings };
+  mockStorage.sync.settings.maxTabs = 2;
+  mockStorage.sync.settings.limitBehavior = 'focus';
+
+  // Clear call log
+  callLog.length = 0;
+  
+  // Set up a custom resolve promise for the windows.update call
+  let resolveWindowsUpdate: (() => void) | null = null;
+  const windowsUpdatePromise = new Promise<void>((resolve) => {
+    resolveWindowsUpdate = resolve;
+  });
+  
+  // Temporarily override windows.update to resolve our promise
+  const originalWindowsUpdate = global.chrome.windows.update;
+  global.chrome.windows.update = async (windowId: number, updateProperties: any) => {
+    callLog.push({ method: 'windows.update', args: [windowId, updateProperties] });
+    if (resolveWindowsUpdate) resolveWindowsUpdate();
+  };
+
+  // Override query to return a tab in window 1, while the new tab is in window 2
+  const originalQuery = global.chrome.tabs.query;
+  global.chrome.tabs.query = async (queryInfo: any) => {
+    return [
+      { id: 1, pinned: false, windowId: 1, url: 'https://google.com', lastAccessed: 100 },
+      { id: 2, pinned: false, windowId: 1, url: 'https://github.com', lastAccessed: 200 },
+      { id: 3, pinned: false, windowId: 2, url: 'chrome://newtab/', lastAccessed: 300 },
+    ];
+  };
+
+  const onCreatedListener = chromeListeners.onCreated[0];
+  
+  // Trigger the listener for the new tab (tab 3, in window 2)
+  onCreatedListener({
+    id: 3,
+    pinned: false,
+    windowId: 2,
+    url: 'chrome://newtab/',
+    lastAccessed: 300,
+  });
+
+  await windowsUpdatePromise;
+
+  // Restore overrides and settings
+  global.chrome.windows.update = originalWindowsUpdate;
+  global.chrome.tabs.query = originalQuery;
+  mockStorage.sync.settings = originalSettings;
+
+  // Verify the sequence of calls: move should NOT be called.
+  // Instead, remove should be called, then update, then windows.update focusing window 1 (where oldest tab is).
+  assert.equal(callLog.length, 3, 'Expected exactly 3 tab operations (no move)');
+  assert.deepEqual(callLog[0], {
+    method: 'remove',
+    args: [3],
+  }, 'Expected remove to be called first to close the new empty tab (3)');
+  assert.deepEqual(callLog[1], {
+    method: 'update',
+    args: [1, { active: true }],
+  }, 'Expected update to be called second to activate the oldest tab (1)');
+  assert.deepEqual(callLog[2], {
+    method: 'windows.update',
+    args: [1, { focused: true }],
+  }, 'Expected windows.update to focus the original window (1)');
 });
 
 

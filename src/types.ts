@@ -1,6 +1,7 @@
 export interface Settings {
   maxTabs: number;
   limitScope: 'global' | 'per-window';
+  limitBehavior: 'move' | 'focus';
   oldestDefinition: 'creation' | 'lru';
   excludePinned: boolean;
   syncStash: boolean;

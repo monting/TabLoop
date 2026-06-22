@@ -4,6 +4,7 @@ import { getStash, setStash, STASH_KEY } from './stash.ts';
 
 const maxTabsInput = document.getElementById('maxTabs') as HTMLInputElement;
 const limitScopeSelect = document.getElementById('limitScope') as HTMLSelectElement;
+const limitBehaviorSelect = document.getElementById('limitBehavior') as HTMLSelectElement;
 const oldestDefinitionSelect = document.getElementById('oldestDefinition') as HTMLSelectElement;
 const syncStashCheckbox = document.getElementById('syncStash') as HTMLInputElement;
 const excludePinnedCheckbox = document.getElementById('excludePinned') as HTMLInputElement;
@@ -226,6 +227,7 @@ incrementCooldownBtn.addEventListener('click', () => {
 void loadSettings().then((settings) => {
   maxTabsInput.value = settings.maxTabs.toString();
   limitScopeSelect.value = settings.limitScope;
+  limitBehaviorSelect.value = settings.limitBehavior || 'focus';
   oldestDefinitionSelect.value = settings.oldestDefinition;
   syncStashCheckbox.checked = !!settings.syncStash;
   excludePinnedCheckbox.checked = settings.excludePinned;
@@ -254,6 +256,7 @@ saveBtn.addEventListener('click', async () => {
   const settings: Settings = {
     maxTabs: readMaxTabs(),
     limitScope: limitScopeSelect.value as Settings['limitScope'],
+    limitBehavior: limitBehaviorSelect.value as Settings['limitBehavior'],
     oldestDefinition: oldestDefinitionSelect.value as Settings['oldestDefinition'],
     excludePinned: excludePinnedCheckbox.checked,
     syncStash: newSyncStash,
