@@ -122,13 +122,20 @@ export function sortTabsForResurfacing(
   if (settings.resurfaceCooldown > 0) {
     const cooldownMs = settings.resurfaceCooldown * 60 * 1000;
     const now = Date.now();
-    candidates = candidates.filter((t) => {
+    const cooldownCount = relevantTabs(tabs, settings).filter((t) => {
       const lastResurfaced = times.resurfaced[t.id];
-      if (lastResurfaced !== undefined) {
-        return (now - lastResurfaced) >= cooldownMs;
-      }
-      return true;
-    });
+      return lastResurfaced !== undefined && (now - lastResurfaced) < cooldownMs;
+    }).length;
+
+    if (cooldownCount < settings.maxTabs) {
+      candidates = candidates.filter((t) => {
+        const lastResurfaced = times.resurfaced[t.id];
+        if (lastResurfaced !== undefined) {
+          return (now - lastResurfaced) >= cooldownMs;
+        }
+        return true;
+      });
+    }
   }
 
   const keyOf = (t: TabInfo): number =>

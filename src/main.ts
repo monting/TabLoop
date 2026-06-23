@@ -206,14 +206,14 @@ function render(state: PopupState): void {
     appendEmptyItem(resurfaceList, "No upcoming tabs in queue.");
     toggleContainer.style.display = "none";
   } else {
-    const showAll = queueExpanded || upcomingTabs.length <= 5;
-    const itemsToShow = showAll ? upcomingTabs : upcomingTabs.slice(0, 5);
+    const showAll = queueExpanded || upcomingTabs.length <= 3;
+    const itemsToShow = showAll ? upcomingTabs : upcomingTabs.slice(0, 3);
 
     itemsToShow.forEach((tab) => {
       resurfaceList.append(renderUpcomingItem(tab, times));
     });
 
-    if (upcomingTabs.length > 5) {
+    if (upcomingTabs.length > 3) {
       toggleContainer.style.display = "flex";
       toggleContainer.innerHTML = "";
 
@@ -222,7 +222,7 @@ function render(state: PopupState): void {
       toggleBtn.dataset.act = "toggle-queue-expand";
       toggleBtn.textContent = queueExpanded
         ? "Show less"
-        : `Show all (+${upcomingTabs.length - 5} more)`;
+        : `Show all (+${upcomingTabs.length - 3} more)`;
       toggleBtn.style.fontWeight = "600";
       toggleBtn.style.color = "var(--accent)";
 
