@@ -119,7 +119,7 @@ function initSkeleton(): void {
 
     <div class="card resurface-queue">
       <div class="resurface-head">
-        <span class="resurface-title">Upcoming Queue</span>
+        <span class="resurface-title">Stale Queue</span>
       </div>
       <ul class="resurface-list"></ul>
       <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;"></div>
@@ -207,7 +207,7 @@ function render(state: PopupState): void {
 
   const resurfaceTitle =
     app.querySelector<HTMLSpanElement>(".resurface-title")!;
-  resurfaceTitle.textContent = `Upcoming Queue (${upcomingTabs.length})`;
+  resurfaceTitle.textContent = `Stale Queue (${upcomingTabs.length})`;
 
   const resurfaceList = app.querySelector<HTMLUListElement>(".resurface-list")!;
   resurfaceList.replaceChildren();
@@ -216,7 +216,7 @@ function render(state: PopupState): void {
   )!;
 
   if (upcomingTabs.length === 0) {
-    appendEmptyItem(resurfaceList, "No upcoming tabs in queue.");
+    appendEmptyItem(resurfaceList, "No stale tabs in queue.");
     toggleContainer.style.display = "none";
   } else {
     const showAll = queueExpanded || upcomingTabs.length <= 3;
