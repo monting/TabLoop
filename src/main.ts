@@ -144,16 +144,20 @@ function render(state: PopupState): void {
   meterCard.className = `card meter ${level}`;
 
   const countEl = meterCard.querySelector<HTMLDivElement>(".count")!;
-  countEl.innerHTML = `<span class="cur">${count}</span><span class="slash">/</span><span class="max">${max}</span>`;
+  countEl.replaceChildren(
+    spanWith("cur", String(count)),
+    spanWith("slash", "/"),
+    spanWith("max", String(max)),
+  );
 
   const barFill = meterCard.querySelector<HTMLDivElement>(".bar-fill")!;
   barFill.style.width = `${Math.min(100, ratio * 100)}%`;
 
   const hintEl = meterCard.querySelector<HTMLParagraphElement>(".hint")!;
-  hintEl.innerHTML = atLimit
+  hintEl.textContent = atLimit
     ? settings.enableStash
-      ? "At limit &mdash; stash a tab to free a slot"
-      : "At limit &mdash; close a tab to free a slot"
+      ? "At limit — stash a tab to free a slot"
+      : "At limit — close a tab to free a slot"
     : `${remaining} slot${remaining === 1 ? "" : "s"} remaining`;
 
   const stashCard = app.querySelector<HTMLDivElement>(".card.stash")!;
@@ -171,19 +175,28 @@ function render(state: PopupState): void {
     : "This page can't be stashed";
 
   const stashTitle = app.querySelector<HTMLSpanElement>(".stash-title")!;
-  stashTitle.innerHTML = `Stash${stash.length ? ` <span class="pill">${stash.length}</span>` : ""}`;
+  stashTitle.replaceChildren("Stash");
+  if (stash.length) {
+    stashTitle.append(" ", spanWith("pill", String(stash.length)));
+  }
 
   const stashClearContainer = app.querySelector<HTMLDivElement>(
     ".stash-clear-container",
   )!;
-  stashClearContainer.innerHTML = stash.length
-    ? '<button class="link" data-act="clear">Clear all</button>'
-    : "";
+  if (stash.length) {
+    const clearBtn = document.createElement("button");
+    clearBtn.className = "link";
+    clearBtn.dataset.act = "clear";
+    clearBtn.textContent = "Clear all";
+    stashClearContainer.replaceChildren(clearBtn);
+  } else {
+    stashClearContainer.replaceChildren();
+  }
 
   const escapeHatchActive = escapeHatchClicked;
 
   const list = app.querySelector<HTMLUListElement>(".stash-list")!;
-  list.innerHTML = "";
+  list.replaceChildren();
   if (stash.length === 0) {
     appendEmptyItem(list, "Nothing stashed yet.");
   } else {
@@ -197,7 +210,7 @@ function render(state: PopupState): void {
   resurfaceTitle.textContent = `Upcoming Queue (${upcomingTabs.length})`;
 
   const resurfaceList = app.querySelector<HTMLUListElement>(".resurface-list")!;
-  resurfaceList.innerHTML = "";
+  resurfaceList.replaceChildren();
   const toggleContainer = app.querySelector<HTMLDivElement>(
     ".resurface-toggle-container",
   )!;
@@ -215,7 +228,6 @@ function render(state: PopupState): void {
 
     if (upcomingTabs.length > 3 && !queueExpanded) {
       toggleContainer.style.display = "flex";
-      toggleContainer.innerHTML = "";
 
       const toggleBtn = document.createElement("button");
       toggleBtn.className = "link";
@@ -224,10 +236,11 @@ function render(state: PopupState): void {
       toggleBtn.style.fontWeight = "600";
       toggleBtn.style.color = "var(--accent)";
 
-      toggleContainer.append(toggleBtn);
+      toggleContainer.replaceChildren(toggleBtn);
       resurfaceList.style.maxHeight = "";
     } else {
       toggleContainer.style.display = "none";
+      toggleContainer.replaceChildren();
       resurfaceList.style.maxHeight = queueExpanded ? "164px" : "";
     }
   }
@@ -235,17 +248,43 @@ function render(state: PopupState): void {
   const escapeContainer =
     app.querySelector<HTMLDivElement>(".escape-container")!;
   if (escapeHatchClicked) {
-    escapeContainer.innerHTML = `
-      <div style="display: flex; gap: 6px;">
-        <button class="escape-btn" data-act="escape-tab" title="${atLimit ? "Open a new tab outside the limit" : "Open a new tab"}">+ Tab</button>
-        <button class="escape-btn" data-act="escape-window" title="${atLimit ? "Open a new window outside the limit" : "Open a new window"}">+ Window</button>
-      </div>
-    `;
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.gap = "6px";
+
+    const tabBtn = document.createElement("button");
+    tabBtn.className = "escape-btn";
+    tabBtn.dataset.act = "escape-tab";
+    tabBtn.title = atLimit ? "Open a new tab outside the limit" : "Open a new tab";
+    tabBtn.textContent = "+ Tab";
+
+    const windowBtn = document.createElement("button");
+    windowBtn.className = "escape-btn";
+    windowBtn.dataset.act = "escape-window";
+    windowBtn.title = atLimit
+      ? "Open a new window outside the limit"
+      : "Open a new window";
+    windowBtn.textContent = "+ Window";
+
+    row.append(tabBtn, windowBtn);
+    escapeContainer.replaceChildren(row);
   } else {
-    escapeContainer.innerHTML = `
-      <button class="link" data-act="click-escape-hatch" title="Click to show escape actions" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); cursor: pointer; padding: 0;">Escape Hatch</button>
-    `;
+    const escapeLink = document.createElement("button");
+    escapeLink.className = "link";
+    escapeLink.dataset.act = "click-escape-hatch";
+    escapeLink.title = "Click to show escape actions";
+    escapeLink.style.cssText =
+      "font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); cursor: pointer; padding: 0;";
+    escapeLink.textContent = "Escape Hatch";
+    escapeContainer.replaceChildren(escapeLink);
   }
+}
+
+function spanWith(className: string, text: string): HTMLSpanElement {
+  const span = document.createElement("span");
+  span.className = className;
+  span.textContent = text;
+  return span;
 }
 
 function appendEmptyItem(list: HTMLUListElement, text: string): void {
