@@ -172,13 +172,16 @@ function render(state: PopupState): void {
     ? '<button class="link" data-act="clear">Clear all</button>'
     : "";
 
+  const isEscapeTab = !!activeTab && !!activeTab.url && activeTab.url.includes("escape=");
+  const escapeHatchActive = escapeHatchClicked || isEscapeTab;
+
   const list = app.querySelector<HTMLUListElement>(".stash-list")!;
   list.innerHTML = "";
   if (stash.length === 0) {
     appendEmptyItem(list, "Nothing stashed yet.");
   } else {
     for (const item of stash) {
-      list.append(renderItem(item, atLimit, escapeHatchClicked));
+      list.append(renderItem(item, atLimit, escapeHatchActive));
     }
   }
 
@@ -255,7 +258,7 @@ function getFaviconUrl(pageUrl: string): string {
 function renderItem(
   item: StashItem,
   atLimit: boolean,
-  escapeHatchClicked: boolean,
+  escapeHatchActive: boolean,
 ): HTMLLIElement {
   const li = document.createElement("li");
   li.className = "stash-item";
@@ -265,7 +268,7 @@ function renderItem(
   restore.textContent = "Restore";
   restore.dataset.url = item.url;
   restore.dataset.act = "restore";
-  if (atLimit && !escapeHatchClicked) {
+  if (atLimit && !escapeHatchActive) {
     restore.disabled = true;
     restore.title = "Stash or close a tab to make room first";
   }
@@ -436,7 +439,11 @@ app.addEventListener("click", async (e) => {
     case "restore":
       if (url && !(target as HTMLButtonElement).disabled) {
         await removeFromStash(url);
-        if (escapeHatchClicked) {
+        const activeTab = currentState?.activeTab;
+        const isEscapeTab = !!activeTab && !!activeTab.url && activeTab.url.includes("escape=");
+        if (isEscapeTab && activeTab && activeTab.id != null) {
+          await chrome.tabs.update(activeTab.id, { url });
+        } else if (escapeHatchClicked) {
           await chrome.runtime.sendMessage({ type: "escape-hatch-tab", url });
         } else {
           await chrome.tabs.create({ url });

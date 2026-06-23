@@ -289,13 +289,16 @@ function render(state: DashboardState): void {
     });
   }
 
+  const isEscapeMode = escapeType === 'tab' || escapeType === 'window';
+  const escapeHatchActive = escapeHatchClicked || isEscapeMode;
+
   const list = app.querySelector<HTMLUListElement>('.stash-list')!;
   list.innerHTML = '';
   if (stash.length === 0) {
     appendEmptyItem(list, 'Nothing stashed yet.');
   } else {
     for (const item of stash) {
-      list.append(renderItem(item, atLimit, escapeHatchClicked));
+      list.append(renderItem(item, atLimit, escapeHatchActive));
     }
   }
 
@@ -423,7 +426,13 @@ app.addEventListener('click', async (e) => {
     case 'restore':
       if (url && !(target as HTMLButtonElement).disabled) {
         await removeFromStash(url);
-        if (escapeHatchClicked) {
+        const params = new URLSearchParams(window.location.search);
+        const escapeType = params.get('escape');
+        const isEscapeMode = escapeType === 'tab' || escapeType === 'window';
+
+        if (isEscapeMode) {
+          await chrome.tabs.update(undefined, { url });
+        } else if (escapeHatchClicked) {
           await chrome.runtime.sendMessage({ type: 'escape-hatch-tab', url });
         } else {
           await chrome.tabs.create({ url });
