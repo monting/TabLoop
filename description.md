@@ -18,6 +18,7 @@ Set a limit you prefer (e.g., 20 tabs). When you try to open the 21st tab, TabLo
   - **Least Recently Used (LRU):** Closes the tab you haven't looked at in the longest time.
   - **Oldest by Creation:** Closes the tab that has been open the longest, regardless of when you last viewed it.
 - ❄️ **Resurfacing Cooldown:** Avoid cycling through the same tabs repeatedly. If a tab was activated within a configurable time frame (in minutes), it is automatically skipped when finding the oldest tab to close.
+- 👀 **Upcoming Queue:** See the list of your most stale tabs right in the popup. Jump straight to them, or close them on the spot to free up slots.
 
 - 🚀 **Escape Hatch:** You're at the limit, but desperately need to open a tab. TabLoop has an Escape Hatch that lets you exceed the limit with a bit of a hoop to jump through.
 - 🗃️ **The Stash:** Another way to make space - stash your tab to the cloud to make space. Restore it at any device you're signed into.

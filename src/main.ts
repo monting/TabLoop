@@ -179,8 +179,7 @@ function render(state: PopupState): void {
     ? '<button class="link" data-act="clear">Clear all</button>'
     : "";
 
-  const isEscapeTab = !!activeTab && !!activeTab.url && activeTab.url.includes("escape=");
-  const escapeHatchActive = escapeHatchClicked || isEscapeTab;
+  const escapeHatchActive = escapeHatchClicked;
 
   const list = app.querySelector<HTMLUListElement>(".stash-list")!;
   list.innerHTML = "";
@@ -446,11 +445,7 @@ app.addEventListener("click", async (e) => {
     case "restore":
       if (url && !(target as HTMLButtonElement).disabled) {
         await removeFromStash(url);
-        const activeTab = currentState?.activeTab;
-        const isEscapeTab = !!activeTab && !!activeTab.url && activeTab.url.includes("escape=");
-        if (isEscapeTab && activeTab && activeTab.id != null) {
-          await chrome.tabs.update(activeTab.id, { url });
-        } else if (escapeHatchClicked) {
+        if (escapeHatchClicked) {
           await chrome.runtime.sendMessage({ type: "escape-hatch-tab", url });
         } else {
           await chrome.tabs.create({ url });

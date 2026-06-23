@@ -5,7 +5,6 @@ export default defineConfig({
   plugins: [
     webExtension({
       manifest: "manifest.json",
-      additionalInputs: ["newtab.html"],
     }),
   ],
 });
