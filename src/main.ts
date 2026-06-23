@@ -236,8 +236,8 @@ function render(state: PopupState): void {
   if (escapeHatchClicked) {
     escapeContainer.innerHTML = `
       <div style="display: flex; gap: 6px;">
-        <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? "" : " disabled"}>+ Tab</button>
-        <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? "" : " disabled"}>+ Window</button>
+        <button class="escape-btn" data-act="escape-tab" title="${atLimit ? "Open a new tab outside the limit" : "Open a new tab"}">+ Tab</button>
+        <button class="escape-btn" data-act="escape-window" title="${atLimit ? "Open a new window outside the limit" : "Open a new window"}">+ Window</button>
       </div>
     `;
   } else {
