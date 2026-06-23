@@ -122,7 +122,7 @@ function initSkeleton(): void {
         <span class="resurface-title">Upcoming Queue</span>
       </div>
       <ul class="resurface-list"></ul>
-      <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px;"></div>
+      <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;"></div>
     </div>
   `;
 }
@@ -140,7 +140,6 @@ function render(state: PopupState): void {
     initSkeleton();
   }
 
-
   const meterCard = app.querySelector<HTMLDivElement>(".meter")!;
   meterCard.className = `card meter ${level}`;
 
@@ -152,7 +151,9 @@ function render(state: PopupState): void {
 
   const hintEl = meterCard.querySelector<HTMLParagraphElement>(".hint")!;
   hintEl.innerHTML = atLimit
-    ? (settings.enableStash ? "At limit &mdash; stash a tab to free a slot" : "At limit &mdash; close a tab to free a slot")
+    ? settings.enableStash
+      ? "At limit &mdash; stash a tab to free a slot"
+      : "At limit &mdash; close a tab to free a slot"
     : `${remaining} slot${remaining === 1 ? "" : "s"} remaining`;
 
   const stashCard = app.querySelector<HTMLDivElement>(".card.stash")!;
@@ -179,8 +180,7 @@ function render(state: PopupState): void {
     ? '<button class="link" data-act="clear">Clear all</button>'
     : "";
 
-  const isEscapeTab = !!activeTab && !!activeTab.url && activeTab.url.includes("escape=");
-  const escapeHatchActive = escapeHatchClicked || isEscapeTab;
+  const escapeHatchActive = escapeHatchClicked;
 
   const list = app.querySelector<HTMLUListElement>(".stash-list")!;
   list.innerHTML = "";
@@ -207,28 +207,28 @@ function render(state: PopupState): void {
     toggleContainer.style.display = "none";
   } else {
     const showAll = queueExpanded || upcomingTabs.length <= 3;
-    const itemsToShow = showAll ? upcomingTabs : upcomingTabs.slice(0, 3);
+    const itemsToShow = showAll ? upcomingTabs : upcomingTabs.slice(0, 4);
 
     itemsToShow.forEach((tab) => {
       resurfaceList.append(renderUpcomingItem(tab, times));
     });
 
-    if (upcomingTabs.length > 3) {
+    if (upcomingTabs.length > 3 && !queueExpanded) {
       toggleContainer.style.display = "flex";
       toggleContainer.innerHTML = "";
 
       const toggleBtn = document.createElement("button");
       toggleBtn.className = "link";
       toggleBtn.dataset.act = "toggle-queue-expand";
-      toggleBtn.textContent = queueExpanded
-        ? "Show less"
-        : `Show all (+${upcomingTabs.length - 3} more)`;
+      toggleBtn.textContent = `Show all (+${upcomingTabs.length - 3} more)`;
       toggleBtn.style.fontWeight = "600";
       toggleBtn.style.color = "var(--accent)";
 
       toggleContainer.append(toggleBtn);
+      resurfaceList.style.maxHeight = "";
     } else {
       toggleContainer.style.display = "none";
+      resurfaceList.style.maxHeight = queueExpanded ? "164px" : "";
     }
   }
 
@@ -237,8 +237,8 @@ function render(state: PopupState): void {
   if (escapeHatchClicked) {
     escapeContainer.innerHTML = `
       <div style="display: flex; gap: 6px;">
-        <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? "" : " disabled"}>+ Tab</button>
-        <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? "" : " disabled"}>+ Window</button>
+        <button class="escape-btn" data-act="escape-tab" title="${atLimit ? "Open a new tab outside the limit" : "Open a new tab"}">+ Tab</button>
+        <button class="escape-btn" data-act="escape-window" title="${atLimit ? "Open a new window outside the limit" : "Open a new window"}">+ Window</button>
       </div>
     `;
   } else {
@@ -255,6 +255,11 @@ function appendEmptyItem(list: HTMLUListElement, text: string): void {
   list.append(empty);
 }
 
+const FALLBACK_FAVICON =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+
+// Stash items are saved URLs with no live tab, so they fall back to Chrome's
+// favicon cache where available (Firefox shows the generic glyph instead).
 function getFaviconUrl(pageUrl: string): string {
   const url = new URL(chrome.runtime.getURL("/_favicon/"));
   url.searchParams.set("pageUrl", pageUrl);
@@ -285,8 +290,7 @@ function renderItem(
   favicon.src = getFaviconUrl(item.url);
   favicon.alt = "";
   favicon.onerror = () => {
-    favicon.src =
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+    favicon.src = FALLBACK_FAVICON;
   };
 
   const label = document.createElement("span");
@@ -325,13 +329,14 @@ function renderUpcomingItem(
   const li = document.createElement("li");
   li.className = "resurface-item";
 
+  // These are live tabs, so use each tab's own favicon — works in Chrome and
+  // Firefox alike (the chrome://favicon / _favicon endpoint is Chrome-only).
   const favicon = document.createElement("img");
   favicon.className = "favicon";
-  favicon.src = tab.url ? getFaviconUrl(tab.url) : "";
+  favicon.src = tab.favIconUrl || FALLBACK_FAVICON;
   favicon.alt = "";
   favicon.onerror = () => {
-    favicon.src =
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+    favicon.src = FALLBACK_FAVICON;
   };
 
   const label = document.createElement("a");
@@ -446,11 +451,7 @@ app.addEventListener("click", async (e) => {
     case "restore":
       if (url && !(target as HTMLButtonElement).disabled) {
         await removeFromStash(url);
-        const activeTab = currentState?.activeTab;
-        const isEscapeTab = !!activeTab && !!activeTab.url && activeTab.url.includes("escape=");
-        if (isEscapeTab && activeTab && activeTab.id != null) {
-          await chrome.tabs.update(activeTab.id, { url });
-        } else if (escapeHatchClicked) {
+        if (escapeHatchClicked) {
           await chrome.runtime.sendMessage({ type: "escape-hatch-tab", url });
         } else {
           await chrome.tabs.create({ url });

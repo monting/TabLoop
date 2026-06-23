@@ -1164,54 +1164,26 @@ test("when a new tab in a new window triggers recycling and limitBehavior is foc
   );
 });
 
-test("a tab created via escape hatch can navigate to a new URL without being blocked when over limit", async () => {
+test("escape-hatch-tab opens an ordinary new tab and does not substitute an extension page", async () => {
   const originalSettings = { ...mockStorage.sync.settings };
   mockStorage.sync.settings.maxTabs = 2; // limit is 2, query has 3 tabs => over limit
   callLog.length = 0;
 
-  // 1. Trigger the escape hatch message to create the tab
+  // Capture the options passed to chrome.tabs.create.
+  let createOptions: any;
+  const originalCreate = global.chrome.tabs.create;
+  global.chrome.tabs.create = async (options: any) => {
+    createOptions = options;
+    return { id: 99, windowId: 1 };
+  };
+
   const onMessage = chromeListeners.onMessage[0];
   onMessage("escape-hatch-tab");
   await new Promise((r) => setTimeout(r, 0)); // let chrome.tabs.create resolve
 
-  // Set up a promise to wait for state.recordCreated to finish storage.set
-  let resolveStorageSet: (() => void) | null = null;
-  const storageSetPromise = new Promise<void>((resolve) => {
-    resolveStorageSet = resolve;
-  });
-  const originalSet = global.chrome.storage.session.set;
-  global.chrome.storage.session.set = async (items: any) => {
-    Object.assign(mockStorage.session, items);
-    if (resolveStorageSet) resolveStorageSet();
-  };
-
-  // 2. Trigger handleCreated listener for the escape tab (id 99)
-  const onCreated = chromeListeners.onCreated[0]; // this is handleCreated because of unshifting
-  onCreated({ id: 99, pinned: false, windowId: 1, url: "chrome://newtab/" });
-  
-  await storageSetPromise;
-  global.chrome.storage.session.set = originalSet;
-
-  // Run the lastKnownUrls setter listener which is at index 1 now
-  const lastKnownUrlsListener = chromeListeners.onCreated[1];
-  lastKnownUrlsListener({ id: 99, pinned: false, windowId: 1, url: "chrome://newtab/" });
-
-  // Clear callLog
-  callLog.length = 0;
-
-  // 3. Trigger onUpdated to simulate intermediate redirect to newtab.html (an exempt URL)
-  const onUpdated = chromeListeners.onUpdated[1];
-  assert.ok(onUpdated, "onUpdated listener should be registered");
-
-  await onUpdated(99, { url: "chrome-extension://abc/newtab.html" }, { id: 99, windowId: 1, url: "chrome-extension://abc/newtab.html" });
-
-  // 4. Trigger onUpdated to simulate navigating tab 99 to a non-exempt URL (https://google.com)
-  await onUpdated(99, { url: "https://google.com" }, { id: 99, windowId: 1, url: "https://google.com" });
-
-  // Restore settings
+  global.chrome.tabs.create = originalCreate;
   mockStorage.sync.settings = originalSettings;
 
-  // Assert: tab 99 should NOT have been redirected (reverted) to newtab.html?alert=limit
-  const redirectionCalls = callLog.filter((c) => c.method === "update" && c.args[0] === 99);
-  assert.deepEqual(redirectionCalls, [], "Escape tab navigation must not be blocked/redirected");
+  // The escape hatch must open a blank native new tab — never a custom extension page.
+  assert.deepEqual(createOptions, {}, "Escape hatch should open a blank new tab");
 });

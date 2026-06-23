@@ -1,6 +1,6 @@
 # TabLoop
 
-TabLoop is a modern Chrome Extension designed to help you conquer tab hoarding. By setting a customizable limit on your open tabs, TabLoop forces you to confront your pile. When you hit your limit and open a new tab, the extension intercepts it, surfacing your oldest tab to be dealt with. The link you were trying to open isn't thrown away — it's saved to your **Stash**, which you can restore from the toolbar popup. You can also stash any open tab yourself to instantly free up a slot.
+TabLoop is a modern browser extension designed to help you conquer tab hoarding. By setting a customizable limit on your open tabs, TabLoop forces you to confront your pile. When you're at your limit and open a new tab, the extension closes the empty new tab and surfaces your oldest tab to be dealt with instead. To deliberately set a tab aside for later, stash it yourself from the toolbar popup — it closes, frees a slot, and can be restored anytime. All of TabLoop's interface lives in that popup and the settings page.
 
 ## Features
 
@@ -14,7 +14,7 @@ TabLoop is a modern Chrome Extension designed to help you conquer tab hoarding. 
 
 ## Design Notes
 
-- **No "Hijack New Tab Page" feature (removed).** TabLoop deliberately does not override Chrome's new-tab page. An earlier version shipped a toggle that swapped the new-tab page for a TabLoop dashboard, but Manifest V3 registers `chrome_url_overrides` statically — there is no API to turn the override off at runtime. That made the toggle's "off" state impossible to honor: with the override always active, we could never fall back to the browser's default (blank) new-tab page, so turning the setting on or off had no real effect. The feature (the override, the `hijackNewTab` setting, and the new-tab exemption it implied) was removed entirely rather than ship a control that can't work. New tabs now always show Chrome's native new-tab page.
+- **No "Hijack New Tab Page" feature (removed).** TabLoop deliberately does not override the browser's new-tab page, and it never redirects the page you navigate to. An earlier version shipped a toggle that swapped the new-tab page for a TabLoop dashboard, but Manifest V3 registers `chrome_url_overrides` statically — there is no API to turn the override off at runtime. That made the toggle's "off" state impossible to honor: with the override always active, we could never fall back to the browser's default (blank) new-tab page, so turning the setting on or off had no real effect. The feature (the override, the `hijackNewTab` setting, and the new-tab exemption it implied) was removed entirely rather than ship a control that can't work. The only interface surfaces are the toolbar popup and the settings page. New tabs always show the browser's native new-tab page.
 
 ## How to Run Locally for Development
 

@@ -8,10 +8,10 @@ export default defineConfig({
     webExtension({
       browser: target,
       manifest: "manifest.json",
-      additionalInputs: ["newtab.html"],
     }),
   ],
   build: {
     minify: target === "firefox" ? false : true,
   },
 });
+
