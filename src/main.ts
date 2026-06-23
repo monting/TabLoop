@@ -122,7 +122,7 @@ function initSkeleton(): void {
         <span class="resurface-title">Upcoming Queue</span>
       </div>
       <ul class="resurface-list"></ul>
-      <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px;"></div>
+      <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;"></div>
     </div>
   `;
 }
@@ -140,7 +140,6 @@ function render(state: PopupState): void {
     initSkeleton();
   }
 
-
   const meterCard = app.querySelector<HTMLDivElement>(".meter")!;
   meterCard.className = `card meter ${level}`;
 
@@ -152,7 +151,9 @@ function render(state: PopupState): void {
 
   const hintEl = meterCard.querySelector<HTMLParagraphElement>(".hint")!;
   hintEl.innerHTML = atLimit
-    ? (settings.enableStash ? "At limit &mdash; stash a tab to free a slot" : "At limit &mdash; close a tab to free a slot")
+    ? settings.enableStash
+      ? "At limit &mdash; stash a tab to free a slot"
+      : "At limit &mdash; close a tab to free a slot"
     : `${remaining} slot${remaining === 1 ? "" : "s"} remaining`;
 
   const stashCard = app.querySelector<HTMLDivElement>(".card.stash")!;
@@ -206,28 +207,28 @@ function render(state: PopupState): void {
     toggleContainer.style.display = "none";
   } else {
     const showAll = queueExpanded || upcomingTabs.length <= 3;
-    const itemsToShow = showAll ? upcomingTabs : upcomingTabs.slice(0, 3);
+    const itemsToShow = showAll ? upcomingTabs : upcomingTabs.slice(0, 4);
 
     itemsToShow.forEach((tab) => {
       resurfaceList.append(renderUpcomingItem(tab, times));
     });
 
-    if (upcomingTabs.length > 3) {
+    if (upcomingTabs.length > 3 && !queueExpanded) {
       toggleContainer.style.display = "flex";
       toggleContainer.innerHTML = "";
 
       const toggleBtn = document.createElement("button");
       toggleBtn.className = "link";
       toggleBtn.dataset.act = "toggle-queue-expand";
-      toggleBtn.textContent = queueExpanded
-        ? "Show less"
-        : `Show all (+${upcomingTabs.length - 3} more)`;
+      toggleBtn.textContent = `Show all (+${upcomingTabs.length - 3} more)`;
       toggleBtn.style.fontWeight = "600";
       toggleBtn.style.color = "var(--accent)";
 
       toggleContainer.append(toggleBtn);
+      resurfaceList.style.maxHeight = "";
     } else {
       toggleContainer.style.display = "none";
+      resurfaceList.style.maxHeight = queueExpanded ? "164px" : "";
     }
   }
 
