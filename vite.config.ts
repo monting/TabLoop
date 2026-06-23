@@ -7,4 +7,8 @@ export default defineConfig({
       manifest: "manifest.json",
     }),
   ],
+  build: {
+    minify: false,
+  },
 });
+
