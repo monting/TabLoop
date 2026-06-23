@@ -191,7 +191,6 @@ function initSkeleton(): void {
     <div class="header">
       <h1>TabLoop Dashboard</h1>
       <div style="display: flex; gap: 12px; align-items: center;">
-        <span class="scope"></span>
         <button class="link settings" data-act="settings" title="Settings" aria-label="Settings" style="padding-left: 0; display: flex; align-items: center; justify-content: center;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease-out;">
             <circle cx="12" cy="12" r="3"></circle>
@@ -239,9 +238,6 @@ function render(state: DashboardState): void {
   if (!app.querySelector('.header')) {
     initSkeleton();
   }
-
-  const scopeEl = app.querySelector<HTMLSpanElement>('.scope')!;
-  scopeEl.textContent = settings.limitScope === 'per-window' ? 'This window' : 'All windows';
 
   const params = new URLSearchParams(window.location.search);
   const escapeType = params.get('escape');
@@ -306,7 +302,6 @@ function render(state: DashboardState): void {
   const escapeContainer = app.querySelector<HTMLDivElement>('.escape-container')!;
   if (escapeHatchClicked) {
     escapeContainer.innerHTML = `
-      <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Escape Hatch</span>
       <div style="display: flex; gap: 6px;">
         <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? '' : ' disabled'}>+ Tab</button>
         <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? '' : ' disabled'}>+ Window</button>

@@ -91,9 +91,15 @@ function formatUrl(url: string): string {
 
 function initSkeleton(): void {
   app.innerHTML = `
-    <div class="header">
-      <h1>TabLoop</h1>
-      <span class="scope"></span>
+    <div class="header" style="position: relative; display: flex; justify-content: space-between; align-items: center; min-height: 32px;">
+      <button class="link settings" data-act="settings" title="Settings" aria-label="Settings" style="display: flex; align-items: center; padding: 4px; z-index: 2; margin-left: 0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease-out;">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+      <h1 style="position: absolute; left: 50%; transform: translateX(-50%); margin: 0; z-index: 1; pointer-events: none;">TabLoop</h1>
+      <div class="escape-container" style="display: flex; align-items: center; gap: 8px; z-index: 2;"></div>
     </div>
 
     <div class="card meter">
@@ -118,16 +124,6 @@ function initSkeleton(): void {
       <ul class="resurface-list"></ul>
       <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px;"></div>
     </div>
-
-    <div class="footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
-      <button class="link settings" data-act="settings" title="Settings" aria-label="Settings" style="padding-left: 0;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease-out;">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-      </button>
-      <div class="escape-container" style="display: flex; align-items: center; gap: 10px;"></div>
-    </div>
   `;
 }
 
@@ -144,9 +140,6 @@ function render(state: PopupState): void {
     initSkeleton();
   }
 
-  const scopeEl = app.querySelector<HTMLSpanElement>(".scope")!;
-  scopeEl.textContent =
-    settings.limitScope === "per-window" ? "This window" : "All windows";
 
   const meterCard = app.querySelector<HTMLDivElement>(".meter")!;
   meterCard.className = `card meter ${level}`;
@@ -233,7 +226,6 @@ function render(state: PopupState): void {
     app.querySelector<HTMLDivElement>(".escape-container")!;
   if (escapeHatchClicked) {
     escapeContainer.innerHTML = `
-      <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Escape Hatch</span>
       <div style="display: flex; gap: 6px;">
         <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? "" : " disabled"}>+ Tab</button>
         <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? "" : " disabled"}>+ Window</button>
