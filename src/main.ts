@@ -102,13 +102,12 @@ function initSkeleton(): void {
       <p class="hint"></p>
     </div>
 
-    <button class="stash-btn" data-act="stash-current"></button>
-
     <div class="card stash">
       <div class="stash-head">
         <span class="stash-title">Stash</span>
         <div class="stash-clear-container"></div>
       </div>
+      <button class="stash-btn" data-act="stash-current" style="margin-bottom: 12px;"></button>
       <ul class="stash-list"></ul>
     </div>
 
@@ -338,7 +337,7 @@ function renderUpcomingItem(
   label.href = "#";
   label.textContent =
     tab.title?.trim() || (tab.url ? formatUrl(tab.url) : "Untitled");
-  label.title = tab.url || "";
+  label.title = "Click to go to tab";
   label.dataset.act = "focus-tab";
   label.dataset.id = tab.id?.toString();
   label.dataset.windowId = tab.windowId?.toString();

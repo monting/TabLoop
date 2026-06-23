@@ -151,7 +151,7 @@ function renderUpcomingItem(tab: chrome.tabs.Tab, times: TabTimes): HTMLLIElemen
   label.className = 'title';
   label.href = '#';
   label.textContent = tab.title?.trim() || (tab.url ? formatUrl(tab.url) : 'Untitled');
-  label.title = tab.url || '';
+  label.title = 'Click to go to tab';
   label.dataset.act = 'focus-tab';
   label.dataset.id = tab.id?.toString();
   label.dataset.windowId = tab.windowId?.toString();
