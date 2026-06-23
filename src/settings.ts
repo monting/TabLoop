@@ -7,7 +7,7 @@ export const DEFAULT_SETTINGS: Settings = {
   oldestDefinition: 'lru',
   excludePinned: true,
   enableStash: true,
-  syncStash: false,
+  syncStash: true,
   skipResurfaceDomains: [],
   priorityResurfaceDomains: [],
   resurfaceCooldown: 5,
