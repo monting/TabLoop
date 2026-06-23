@@ -24,6 +24,6 @@ Set a limit you prefer (e.g., 20 tabs). When you try to open the 21st tab, TabLo
 - 🗃️ **The Stash:** Another way to make space - stash your tab to the cloud to make space. Restore it at any device you're signed into.
 - ☁️ **Cloud Sync:** Your settings, domain lists, and even your Stashed tabs sync seamlessly across all your signed-in Chrome/Fire-fox browsers (configurable).
 
-- 🛡️ **Protect Important Tabs:** Choose to completely exclude Pinned tabs and Incognito tabs from your limit calculations. 
+- 🛡️ **Protect Important Tabs:** Choose to completely exclude Pinned tabs from your limit calculations. 
 - 🎯 **Priortize Domains to Re-surface:** Want to aggressively close specific time-wasting sites? Add domains (like `reddit.com` or `facebook.com`) to your Priority list, and TabLoop will bring them back first.
 - ⏸️ **Domains to skip Re-surfacing:** Protect crucial sites. Add domains (like `youtube.com`) to your Skip list, and TabLoop will bypass them when re-surfacing.
