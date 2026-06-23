@@ -21,9 +21,9 @@ Set a limit you prefer (e.g., 20 tabs). When you try to open the 21st tab, TabLo
 - 👀 **Upcoming Queue:** See the list of your most stale tabs right in the popup. Jump straight to them, or close them on the spot to free up slots.
 
 - 🚀 **Escape Hatch:** You're at the limit, but desperately need to open a tab. TabLoop has an Escape Hatch that lets you exceed the limit with a bit of a hoop to jump through.
-- 🗃️ **The Stash:** Another way to make space - stash your tab to the cloud to make space. Restore it at any device you're signed into.
-- ☁️ **Cloud Sync:** Your settings, domain lists, and even your Stashed tabs sync seamlessly across all your signed-in Chrome/Fire-fox browsers (configurable).
+- 🗃️ **The Stash:** Another way to make space - park any open tab in your Stash and it closes to free a slot. Restore it later from the popup, on any device you're signed into.
+- ☁️ **Cloud Sync:** Your settings, domain lists, and Stashed tabs sync across all your signed-in browsers. On by default - you can turn it off in the settings page.
 
-- 🛡️ **Protect Important Tabs:** Choose to completely exclude Pinned tabs from your limit calculations. 
-- 🎯 **Priortize Domains to Re-surface:** Want to aggressively close specific time-wasting sites? Add domains (like `reddit.com` or `facebook.com`) to your Priority list, and TabLoop will bring them back first.
+- 🛡️ **Pinned Tabs:** Choose to completely exclude Pinned tabs from your limit calculations.
+- 🎯 **Prioritize Domains to Re-surface:** Want to aggressively close specific time-wasting sites? Add domains (like `reddit.com` or `facebook.com`) to your Priority list, and TabLoop will bring them back first.
 - ⏸️ **Domains to skip Re-surfacing:** Protect crucial sites. Add domains (like `youtube.com`) to your Skip list, and TabLoop will bypass them when re-surfacing.
