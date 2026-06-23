@@ -15,20 +15,30 @@
     "page": "src/options.html",
     "open_in_tab": true
   },
-  "background": {
+  "{{chrome}}.background": {
     "service_worker": "src/background.ts",
+    "type": "module"
+  },
+  "{{firefox}}.background": {
+    "scripts": ["src/background.ts"],
     "type": "module"
   },
   "permissions": [
     "storage",
     "tabs",
-    "favicon"
+    "{{chrome}}.favicon"
   ],
-  "web_accessible_resources": [
+  "{{chrome}}.web_accessible_resources": [
     {
       "resources": ["_favicon/*"],
       "matches": ["<all_urls>"],
       "extension_ids": ["*"]
     }
-  ]
+  ],
+  "{{firefox}}.browser_specific_settings": {
+    "gecko": {
+      "id": "tabloop@montl.dev",
+      "strict_min_version": "121.0"
+    }
+  }
 }

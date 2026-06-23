@@ -11,6 +11,9 @@ export default defineConfig({
     }),
   ],
   build: {
+    // Keep each browser's bundle in its own folder so they never clobber each
+    // other and can be zipped/loaded independently.
+    outDir: `dist/${target}`,
     minify: false,
   },
 });
