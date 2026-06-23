@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "dev:firefox": "TARGET=firefox vite",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run build:chrome && npm run build:firefox",
+    "build:chrome": "tsc && TARGET=chrome vite build",
+    "build:firefox": "tsc && TARGET=firefox vite build",
     "preview": "vite preview",
     "test": "node --test test/*.test.ts"
   },
