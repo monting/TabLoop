@@ -255,6 +255,11 @@ function appendEmptyItem(list: HTMLUListElement, text: string): void {
   list.append(empty);
 }
 
+const FALLBACK_FAVICON =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+
+// Stash items are saved URLs with no live tab, so they fall back to Chrome's
+// favicon cache where available (Firefox shows the generic glyph instead).
 function getFaviconUrl(pageUrl: string): string {
   const url = new URL(chrome.runtime.getURL("/_favicon/"));
   url.searchParams.set("pageUrl", pageUrl);
@@ -285,8 +290,7 @@ function renderItem(
   favicon.src = getFaviconUrl(item.url);
   favicon.alt = "";
   favicon.onerror = () => {
-    favicon.src =
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+    favicon.src = FALLBACK_FAVICON;
   };
 
   const label = document.createElement("span");
@@ -325,13 +329,14 @@ function renderUpcomingItem(
   const li = document.createElement("li");
   li.className = "resurface-item";
 
+  // These are live tabs, so use each tab's own favicon — works in Chrome and
+  // Firefox alike (the chrome://favicon / _favicon endpoint is Chrome-only).
   const favicon = document.createElement("img");
   favicon.className = "favicon";
-  favicon.src = tab.url ? getFaviconUrl(tab.url) : "";
+  favicon.src = tab.favIconUrl || FALLBACK_FAVICON;
   favicon.alt = "";
   favicon.onerror = () => {
-    favicon.src =
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+    favicon.src = FALLBACK_FAVICON;
   };
 
   const label = document.createElement("a");

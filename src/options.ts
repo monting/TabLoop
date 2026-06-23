@@ -31,19 +31,54 @@ const prioritySuggestions = document.getElementById('prioritySuggestions') as HT
 let skipDomains: string[] = [];
 let priorityDomains: string[] = [];
 
+const GENERIC_FAVICON = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+
+/** Favicons of the currently-open tabs, keyed by bare hostname (www stripped). */
+const faviconByDomain = new Map<string, string>();
+/** Bare hostnames of the currently-open http(s) tabs, sorted — drives the suggestions. */
+let activeDomains: string[] = [];
+
+/**
+ * Read the open tabs once: collect their domains (for suggestions) and their
+ * favicons (for the lists/pills). Uses each live tab's own favIconUrl so favicons
+ * work in both Chrome and Firefox, without the Chrome-only `_favicon` endpoint.
+ */
+async function refreshTabData(): Promise<void> {
+  faviconByDomain.clear();
+  const domains = new Set<string>();
+  try {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      if (!tab.url) continue;
+      try {
+        const url = new URL(tab.url);
+        if (!url.protocol.startsWith('http')) continue;
+        const domain = url.hostname.replace(/^www\./i, '');
+        if (!domain) continue;
+        domains.add(domain);
+        if (tab.favIconUrl) faviconByDomain.set(domain, tab.favIconUrl);
+      } catch {}
+    }
+  } catch (e) {
+    console.warn('Could not query active tabs:', e);
+  }
+  activeDomains = Array.from(domains).sort();
+}
+
+/** A favicon for a domain/keyword: the open tab's favicon if we have one, else a generic glyph. */
 function getFavicon(item: string): string {
   const isDomain = item.includes('.') && !item.includes(' ');
   if (isDomain) {
-    let clean = item.trim();
-    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-      clean = 'https://' + clean;
-    }
-    const url = new URL(chrome.runtime.getURL('/_favicon/'));
-    url.searchParams.set('pageUrl', clean);
-    url.searchParams.set('size', '32');
-    return url.toString();
+    const domain = item
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .split('/')[0];
+    const favicon = faviconByDomain.get(domain);
+    if (favicon) return favicon;
   }
-  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+  return GENERIC_FAVICON;
 }
 
 function renderDomainList(listEl: HTMLDivElement, domains: string[], onRemove: (index: number) => void) {
@@ -93,27 +128,7 @@ async function updateSuggestions(
   onAddSkip: (domain: string) => void,
   onAddPriority: (domain: string) => void
 ) {
-  let domainsList: string[] = [];
-  try {
-    const tabs = await chrome.tabs.query({});
-    const activeDomains = new Set<string>();
-    for (const tab of tabs) {
-      if (tab.url) {
-        try {
-          const url = new URL(tab.url);
-          if (url.protocol.startsWith('http')) {
-            const domain = url.hostname.replace(/^www\./i, '');
-            if (domain) {
-              activeDomains.add(domain);
-            }
-          }
-        } catch {}
-      }
-    }
-    domainsList = Array.from(activeDomains).sort();
-  } catch (e) {
-    console.warn("Could not query active tabs for suggestions:", e);
-  }
+  const domainsList = activeDomains;
 
   const renderPills = (
     container: HTMLDivElement,
@@ -153,15 +168,17 @@ async function updateSuggestions(
   renderPills(priorityPillsEl, currentPriority, onAddPriority);
 }
 
-function renderAll() {
+async function renderAll() {
+  // Pull fresh tab favicons/domains first so the lists and pills render with icons.
+  await refreshTabData();
   renderDomainList(skipDomainList, skipDomains, (idx) => {
     skipDomains.splice(idx, 1);
-    renderAll();
+    void renderAll();
     triggerSave();
   });
   renderDomainList(priorityDomainList, priorityDomains, (idx) => {
     priorityDomains.splice(idx, 1);
-    renderAll();
+    void renderAll();
     triggerSave();
   });
   void updateSuggestions(
@@ -171,12 +188,12 @@ function renderAll() {
     priorityDomains,
     (d) => {
       skipDomains.push(d);
-      renderAll();
+      void renderAll();
       triggerSave();
     },
     (d) => {
       priorityDomains.push(d);
-      renderAll();
+      void renderAll();
       triggerSave();
     }
   );
@@ -187,7 +204,7 @@ addSkipDomainBtn.addEventListener('click', () => {
   if (domain && !skipDomains.includes(domain)) {
     skipDomains.push(domain);
     skipDomainInput.value = '';
-    renderAll();
+    void renderAll();
     triggerSave();
   }
 });
@@ -203,7 +220,7 @@ addPriorityDomainBtn.addEventListener('click', () => {
   if (item && !priorityDomains.includes(item)) {
     priorityDomains.push(item);
     priorityDomainInput.value = '';
-    renderAll();
+    void renderAll();
     triggerSave();
   }
 });
@@ -251,7 +268,7 @@ void loadSettings().then((settings) => {
   resurfaceCooldownInput.value = settings.resurfaceCooldown.toString();
   skipDomains = settings.skipResurfaceDomains || [];
   priorityDomains = settings.priorityResurfaceDomains || [];
-  renderAll();
+  void renderAll();
 });
 
 function readMaxTabs(): number {
