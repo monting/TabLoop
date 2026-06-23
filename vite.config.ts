@@ -11,7 +11,7 @@ export default defineConfig({
     }),
   ],
   build: {
-    minify: target === "firefox" ? false : true,
+    minify: false,
   },
 });
 
