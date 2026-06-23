@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS: Settings = {
   limitBehavior: 'focus',
   oldestDefinition: 'lru',
   excludePinned: true,
+  enableStash: true,
   syncStash: false,
   skipResurfaceDomains: [],
   priorityResurfaceDomains: [],

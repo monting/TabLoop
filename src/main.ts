@@ -152,8 +152,15 @@ function render(state: PopupState): void {
 
   const hintEl = meterCard.querySelector<HTMLParagraphElement>(".hint")!;
   hintEl.innerHTML = atLimit
-    ? "At limit &mdash; stash a tab to free a slot"
+    ? (settings.enableStash ? "At limit &mdash; stash a tab to free a slot" : "At limit &mdash; close a tab to free a slot")
     : `${remaining} slot${remaining === 1 ? "" : "s"} remaining`;
+
+  const stashCard = app.querySelector<HTMLDivElement>(".card.stash")!;
+  if (settings.enableStash) {
+    stashCard.style.display = "";
+  } else {
+    stashCard.style.display = "none";
+  }
 
   const stashBtn = app.querySelector<HTMLButtonElement>(".stash-btn")!;
   stashBtn.textContent = "Stash current tab";

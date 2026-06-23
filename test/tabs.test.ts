@@ -20,6 +20,7 @@ const baseSettings: Settings = {
   limitBehavior: 'focus',
   oldestDefinition: 'creation',
   excludePinned: true,
+  enableStash: true,
   syncStash: false,
   skipResurfaceDomains: [],
   priorityResurfaceDomains: [],
@@ -36,6 +37,10 @@ function times(creation: Record<number, number> = {}): TabTimes {
 
 test('the default configuration recycles the least-recently-used tab', () => {
   assert.equal(DEFAULT_SETTINGS.oldestDefinition, 'lru');
+});
+
+test('enableStash defaults to true in DEFAULT_SETTINGS', () => {
+  assert.equal(DEFAULT_SETTINGS.enableStash, true);
 });
 
 test('countRelevantTabs counts every tab when excludePinned is off', () => {

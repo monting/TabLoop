@@ -267,8 +267,15 @@ function render(state: DashboardState): void {
 
   const hintEl = meterCard.querySelector<HTMLParagraphElement>('.hint')!;
   hintEl.innerHTML = atLimit
-    ? 'At limit &mdash; stash a tab to free a slot'
+    ? (settings.enableStash ? 'At limit &mdash; stash a tab to free a slot' : 'At limit &mdash; close a tab to free a slot')
     : `${remaining} slot${remaining === 1 ? '' : 's'} remaining`;
+
+  const stashCard = app.querySelector<HTMLDivElement>('.card.stash')!;
+  if (settings.enableStash) {
+    stashCard.style.display = '';
+  } else {
+    stashCard.style.display = 'none';
+  }
 
   const stashTitle = app.querySelector<HTMLSpanElement>('.stash-title')!;
   stashTitle.innerHTML = `Stash${stash.length ? ` <span class="pill">${stash.length}</span>` : ''}`;

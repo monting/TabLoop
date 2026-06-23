@@ -7,6 +7,7 @@ const limitScopeSelect = document.getElementById('limitScope') as HTMLSelectElem
 const limitBehaviorSelect = document.getElementById('limitBehavior') as HTMLSelectElement;
 const oldestDefinitionSelect = document.getElementById('oldestDefinition') as HTMLSelectElement;
 const syncStashCheckbox = document.getElementById('syncStash') as HTMLInputElement;
+const enableStashCheckbox = document.getElementById('enableStash') as HTMLInputElement;
 const excludePinnedCheckbox = document.getElementById('excludePinned') as HTMLInputElement;
 const statusContainer = document.getElementById('statusContainer') as HTMLDivElement;
 const statusIcon = document.getElementById('statusIcon') as HTMLSpanElement;
@@ -243,7 +244,9 @@ void loadSettings().then((settings) => {
   limitScopeSelect.value = settings.limitScope;
   limitBehaviorSelect.value = settings.limitBehavior || 'focus';
   oldestDefinitionSelect.value = settings.oldestDefinition;
+  enableStashCheckbox.checked = !!settings.enableStash;
   syncStashCheckbox.checked = !!settings.syncStash;
+  syncStashCheckbox.disabled = !settings.enableStash;
   excludePinnedCheckbox.checked = settings.excludePinned;
   resurfaceCooldownInput.value = settings.resurfaceCooldown.toString();
   skipDomains = settings.skipResurfaceDomains || [];
@@ -304,6 +307,7 @@ async function saveCurrentSettings() {
     limitBehavior: limitBehaviorSelect.value as Settings['limitBehavior'],
     oldestDefinition: oldestDefinitionSelect.value as Settings['oldestDefinition'],
     excludePinned: excludePinnedCheckbox.checked,
+    enableStash: enableStashCheckbox.checked,
     syncStash: newSyncStash,
     skipResurfaceDomains: skipDomains,
     priorityResurfaceDomains: priorityDomains,
@@ -366,5 +370,9 @@ resurfaceCooldownInput.addEventListener('input', triggerSave);
 limitScopeSelect.addEventListener('change', triggerSave);
 limitBehaviorSelect.addEventListener('change', triggerSave);
 oldestDefinitionSelect.addEventListener('change', triggerSave);
+enableStashCheckbox.addEventListener('change', () => {
+  syncStashCheckbox.disabled = !enableStashCheckbox.checked;
+  triggerSave();
+});
 syncStashCheckbox.addEventListener('change', triggerSave);
 excludePinnedCheckbox.addEventListener('change', triggerSave);

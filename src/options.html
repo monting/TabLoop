@@ -74,6 +74,13 @@
                 height: 18px;
                 cursor: pointer;
             }
+            .checkbox-label:has(input:disabled) {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            .checkbox-label input:disabled {
+                cursor: not-allowed;
+            }
             .checkbox-group {
                 display: flex;
                 flex-direction: column;
@@ -395,6 +402,10 @@
                     Exclude Pinned Tabs from being moved
                 </label>
                 <label class="checkbox-label">
+                    <input type="checkbox" id="enableStash" />
+                    Enable Stash feature
+                </label>
+                <label class="checkbox-label" style="margin-left: 28px; transition: opacity 0.2s;">
                     <input type="checkbox" id="syncStash" />
                     Sync Stashed Tabs across devices
                 </label>

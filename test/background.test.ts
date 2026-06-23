@@ -193,6 +193,7 @@ mockStorage.sync.settings = {
   limitBehavior: "move",
   oldestDefinition: "lru",
   excludePinned: true,
+  enableStash: true,
   syncStash: false,
 };
 
@@ -274,6 +275,7 @@ test("getStash and setStash use storage.local when syncStash is false", async ()
     limitBehavior: "move",
     oldestDefinition: "lru",
     excludePinned: true,
+    enableStash: true,
     syncStash: false,
   };
 
@@ -299,6 +301,7 @@ test("getStash and setStash use storage.sync when syncStash is true", async () =
     limitBehavior: "move",
     oldestDefinition: "lru",
     excludePinned: true,
+    enableStash: true,
     syncStash: true,
   };
 
@@ -324,6 +327,7 @@ test("setStash prunes oldest items to stay under 8KB limit when using sync stora
     limitBehavior: "move",
     oldestDefinition: "lru",
     excludePinned: true,
+    enableStash: true,
     syncStash: true,
   };
 
