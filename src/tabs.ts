@@ -13,7 +13,8 @@ export interface TabInfo {
 /** Per-tab creation timestamps tracked across the service-worker lifetime. */
 export interface TabTimes {
   creation: Record<number, number>;
-  resurfaced?: Record<number, number>;
+  resurfaced: Record<number, number>;
+  lastAccessed: Record<number, number>;
 }
 
 /**
@@ -107,47 +108,88 @@ export function matchesDomainOrKeyword(urlStr: string | undefined, list: string[
  * - 'lru'      => the tab you viewed longest ago (Chrome's lastAccessed).
  * - 'creation' => the tab opened longest ago (our own tracked time).
  */
+export function sortTabsForResurfacing(
+  tabs: TabInfo[],
+  times: TabTimes,
+  settings: Settings,
+): TabInfo[] {
+  let candidates = relevantTabs(tabs, settings);
+
+  if (settings.skipResurfaceDomains && settings.skipResurfaceDomains.length > 0) {
+    candidates = candidates.filter((t) => !matchesDomain(t.url, settings.skipResurfaceDomains));
+  }
+
+  if (settings.resurfaceCooldown > 0) {
+    const cooldownMs = settings.resurfaceCooldown * 60 * 1000;
+    const now = Date.now();
+    const cooldownCount = relevantTabs(tabs, settings).filter((t) => {
+      const lastResurfaced = times.resurfaced[t.id];
+      return lastResurfaced !== undefined && (now - lastResurfaced) < cooldownMs;
+    }).length;
+
+    if (cooldownCount < settings.maxTabs) {
+      candidates = candidates.filter((t) => {
+        const lastResurfaced = times.resurfaced[t.id];
+        if (lastResurfaced !== undefined) {
+          return (now - lastResurfaced) >= cooldownMs;
+        }
+        return true;
+      });
+    }
+  }
+
+  const keyOf = (t: TabInfo): number =>
+    settings.oldestDefinition === 'lru'
+      ? (t.lastAccessed ?? times.lastAccessed[t.id] ?? 0)
+      : times.creation[t.id] ?? 0;
+
+  const prioritized: TabInfo[] = [];
+  let remaining: TabInfo[] = [];
+
+  if (settings.priorityResurfaceDomains && settings.priorityResurfaceDomains.length > 0) {
+    candidates.forEach((t) => {
+      if (matchesDomainOrKeyword(t.url, settings.priorityResurfaceDomains)) {
+        prioritized.push(t);
+      } else {
+        remaining.push(t);
+      }
+    });
+  } else {
+    remaining = candidates;
+  }
+
+  const sortFn = (a: TabInfo, b: TabInfo) => {
+    const keyA = keyOf(a);
+    const keyB = keyOf(b);
+    return keyA - keyB;
+  };
+
+  // stable sort is guaranteed on ES2019+
+  prioritized.sort(sortFn);
+  remaining.sort(sortFn);
+
+  return [...prioritized, ...remaining];
+}
+
+/**
+ * Pick the tab to recycle when the limit is exceeded, or null if nothing may be
+ * touched (everything is pinned/protected, so the new tab should be allowed).
+ *
+ * - 'lru'      => the tab you viewed longest ago (Chrome's lastAccessed).
+ * - 'creation' => the tab opened longest ago (our own tracked time).
+ */
 export function selectOldestTab(
   tabs: TabInfo[],
   newTabId: number,
   times: TabTimes,
   settings: Settings,
 ): TabInfo | null {
-  // Recyclable tabs are exactly those that count toward the limit, minus the new one.
-  let candidates = relevantTabs(tabs, settings).filter((t) => t.id !== newTabId);
-
-  // 1. Skip domains when resurfacing
-  if (settings.skipResurfaceDomains && settings.skipResurfaceDomains.length > 0) {
-    candidates = candidates.filter((t) => !matchesDomain(t.url, settings.skipResurfaceDomains));
-  }
-
-  if (settings.resurfaceCooldown > 0 && times.resurfaced) {
-    const cooldownMs = settings.resurfaceCooldown * 60 * 1000;
-    const now = Date.now();
-    candidates = candidates.filter((t) => {
-      const lastResurfaced = times.resurfaced?.[t.id];
-      if (lastResurfaced !== undefined) {
-        return (now - lastResurfaced) >= cooldownMs;
-      }
-      return true;
-    });
-  }
-
-  if (candidates.length === 0) return null;
-
-  const keyOf = (t: TabInfo): number =>
-    settings.oldestDefinition === 'lru' ? t.lastAccessed ?? 0 : times.creation[t.id] ?? 0;
-
-  // 2. Prioritize priority domains/keywords when resurfacing
-  if (settings.priorityResurfaceDomains && settings.priorityResurfaceDomains.length > 0) {
-    const prioritized = candidates.filter((t) => matchesDomainOrKeyword(t.url, settings.priorityResurfaceDomains));
-    if (prioritized.length > 0) {
-      return prioritized.reduce((oldest, t) => (keyOf(t) < keyOf(oldest) ? t : oldest));
-    }
-  }
-
-  // Smallest timestamp wins; ties keep the earlier tab (stable, leftmost-by-index).
-  return candidates.reduce((oldest, t) => (keyOf(t) < keyOf(oldest) ? t : oldest));
+  const sorted = sortTabsForResurfacing(
+    tabs.filter((t) => t.id !== newTabId),
+    times,
+    settings,
+  );
+  return sorted.length > 0 ? sorted[0] : null;
 }
 
 /** Only real web destinations are worth stashing when a tab is blocked. */

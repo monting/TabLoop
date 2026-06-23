@@ -1,7 +1,11 @@
 import "./style.css";
 import type { Settings, StashItem } from "./types";
-import type { TabInfo } from "./tabs";
-import { countRelevantTabs, isStashableUrl } from "./tabs";
+import type { TabInfo, TabTimes } from "./tabs";
+import {
+  countRelevantTabs,
+  isStashableUrl,
+  sortTabsForResurfacing,
+} from "./tabs";
 import { loadSettings } from "./settings";
 import { addToStash, clearStash, getStash, removeFromStash } from "./stash";
 
@@ -18,39 +22,60 @@ interface PopupState {
   count: number;
   stash: StashItem[];
   activeTab: ActiveTab | null;
+  upcomingTabs: chrome.tabs.Tab[];
+  times: TabTimes;
 }
 
 let currentState: PopupState | null = null;
 let escapeHatchClicked = false;
+let queueExpanded = false;
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
   return {
     id: tab.id,
     pinned: tab.pinned,
-    url: tab.url,
+    url: tab.url || tab.pendingUrl || undefined,
     windowId: tab.windowId,
+    lastAccessed: tab.lastAccessed,
   };
 }
 
 async function readState(): Promise<PopupState> {
   const settings = await loadSettings();
-  const rawTabs = await chrome.tabs.query(
-    settings.limitScope === "per-window" ? { currentWindow: true } : {},
-  );
+  const [rawTabs, [active], sessionData, stash] = await Promise.all([
+    chrome.tabs.query(
+      settings.limitScope === "per-window" ? { currentWindow: true } : {},
+    ),
+    chrome.tabs.query({ active: true, currentWindow: true }),
+    chrome.storage.session.get(["creation", "resurfaced", "lastAccessed"]),
+    getStash(),
+  ]);
+
   const tabs = rawTabs.map(toTabInfo).filter((t): t is TabInfo => t !== null);
-  const [active] = await chrome.tabs.query({
-    active: true,
-    currentWindow: true,
-  });
+  const times = {
+    creation: (sessionData["creation"] as Record<number, number>) ?? {},
+    resurfaced: (sessionData["resurfaced"] as Record<number, number>) ?? {},
+    lastAccessed: (sessionData["lastAccessed"] as Record<number, number>) ?? {},
+  };
+
+  const rawTabById = new Map(
+    rawTabs.filter((rt) => rt.id != null).map((rt) => [rt.id!, rt]),
+  );
+  const upcomingTabs = sortTabsForResurfacing(tabs, times, settings)
+    .map((info) => rawTabById.get(info.id))
+    .filter((rt): rt is chrome.tabs.Tab => rt != null);
+
   return {
     settings,
     count: countRelevantTabs(tabs, settings),
-    stash: await getStash(),
+    stash,
     activeTab:
       active?.id != null
         ? { id: active.id, url: active.url, title: active.title }
         : null,
+    upcomingTabs,
+    times,
   };
 }
 
@@ -64,8 +89,46 @@ function formatUrl(url: string): string {
   }
 }
 
+function initSkeleton(): void {
+  app.innerHTML = `
+    <div class="header" style="position: relative; display: flex; justify-content: space-between; align-items: center; min-height: 32px;">
+      <button class="link settings" data-act="settings" title="Settings" aria-label="Settings" style="display: flex; align-items: center; padding: 4px; z-index: 2; margin-left: 0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease-out;">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+      <h1 style="position: absolute; left: 50%; transform: translateX(-50%); margin: 0; z-index: 1; pointer-events: none;">TabLoop</h1>
+      <div class="escape-container" style="display: flex; align-items: center; gap: 8px; z-index: 2;"></div>
+    </div>
+
+    <div class="card meter">
+      <div class="count"></div>
+      <div class="bar"><div class="bar-fill"></div></div>
+      <p class="hint"></p>
+    </div>
+
+    <div class="card stash">
+      <div class="stash-head">
+        <span class="stash-title">Stash</span>
+        <div class="stash-clear-container"></div>
+      </div>
+      <button class="stash-btn" data-act="stash-current" style="margin-bottom: 12px;"></button>
+      <ul class="stash-list"></ul>
+    </div>
+
+    <div class="card resurface-queue">
+      <div class="resurface-head">
+        <span class="resurface-title">Upcoming Queue</span>
+      </div>
+      <ul class="resurface-list"></ul>
+      <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px;"></div>
+    </div>
+  `;
+}
+
 function render(state: PopupState): void {
-  const { settings, count, stash, activeTab } = state;
+  const { settings, count, stash, activeTab, upcomingTabs, times } = state;
   const max = settings.maxTabs;
   const atLimit = count >= max;
   const ratio = max > 0 ? count / max : 0;
@@ -73,71 +136,123 @@ function render(state: PopupState): void {
   const remaining = Math.max(0, max - count);
   const canStash = !!activeTab && isStashableUrl(activeTab.url);
 
-  app.innerHTML = `
-    <div class="header">
-      <div class="brand">
-        <img class="logo" src="/icon-48.png" alt="TabLoop logo" />
-        <h1>TabLoop</h1>
-      </div>
-      <span class="scope">${settings.limitScope === "per-window" ? "This window" : "All windows"}</span>
-    </div>
+  if (!app.querySelector(".header")) {
+    initSkeleton();
+  }
 
-    <div class="card meter ${level}">
-      <div class="count"><span class="cur">${count}</span><span class="slash">/</span><span class="max">${max}</span></div>
-      <div class="bar"><div class="bar-fill" style="width:${Math.min(100, ratio * 100)}%"></div></div>
-      <p class="hint">${
-        atLimit
-          ? "At limit &mdash; stash a tab to free a slot"
-          : `${remaining} slot${remaining === 1 ? "" : "s"} remaining`
-      }</p>
-    </div>
 
-    <button class="stash-btn" data-act="stash-current"${canStash ? "" : " disabled"} title="${
-      canStash
-        ? "Close this tab and save it to your Stash"
-        : "This page can't be stashed"
-    }">Stash this tab to make space</button>
+  const meterCard = app.querySelector<HTMLDivElement>(".meter")!;
+  meterCard.className = `card meter ${level}`;
 
-    <div class="card stash">
-      <div class="stash-head">
-        <span class="stash-title">Stash${stash.length ? ` <span class="pill">${stash.length}</span>` : ""}</span>
-        ${stash.length ? '<button class="link" data-act="clear">Clear all</button>' : ""}
-      </div>
-      <ul class="stash-list"></ul>
-    </div>
+  const countEl = meterCard.querySelector<HTMLDivElement>(".count")!;
+  countEl.innerHTML = `<span class="cur">${count}</span><span class="slash">/</span><span class="max">${max}</span>`;
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
-      <button class="link settings" data-act="settings" title="Settings" aria-label="Settings" style="padding-left: 0;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease-out;">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-      </button>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        ${escapeHatchClicked ? `
-          <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Escape Hatch</span>
-          <div style="display: flex; gap: 6px;">
-            <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? "" : " disabled"}>+ Tab</button>
-            <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? "" : " disabled"}>+ Window</button>
-          </div>
-        ` : `
-          <button class="link" data-act="click-escape-hatch" title="Click to show escape actions" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); cursor: pointer; padding: 0;">Escape Hatch</button>
-        `}
-      </div>
-    </div>
-  `;
+  const barFill = meterCard.querySelector<HTMLDivElement>(".bar-fill")!;
+  barFill.style.width = `${Math.min(100, ratio * 100)}%`;
+
+  const hintEl = meterCard.querySelector<HTMLParagraphElement>(".hint")!;
+  hintEl.innerHTML = atLimit
+    ? (settings.enableStash ? "At limit &mdash; stash a tab to free a slot" : "At limit &mdash; close a tab to free a slot")
+    : `${remaining} slot${remaining === 1 ? "" : "s"} remaining`;
+
+  const stashCard = app.querySelector<HTMLDivElement>(".card.stash")!;
+  if (settings.enableStash) {
+    stashCard.style.display = "";
+  } else {
+    stashCard.style.display = "none";
+  }
+
+  const stashBtn = app.querySelector<HTMLButtonElement>(".stash-btn")!;
+  stashBtn.textContent = "Stash current tab";
+  stashBtn.disabled = !canStash;
+  stashBtn.title = canStash
+    ? "Close this tab and save it to your Stash"
+    : "This page can't be stashed";
+
+  const stashTitle = app.querySelector<HTMLSpanElement>(".stash-title")!;
+  stashTitle.innerHTML = `Stash${stash.length ? ` <span class="pill">${stash.length}</span>` : ""}`;
+
+  const stashClearContainer = app.querySelector<HTMLDivElement>(
+    ".stash-clear-container",
+  )!;
+  stashClearContainer.innerHTML = stash.length
+    ? '<button class="link" data-act="clear">Clear all</button>'
+    : "";
+
+  const isEscapeTab = !!activeTab && !!activeTab.url && activeTab.url.includes("escape=");
+  const escapeHatchActive = escapeHatchClicked || isEscapeTab;
 
   const list = app.querySelector<HTMLUListElement>(".stash-list")!;
+  list.innerHTML = "";
   if (stash.length === 0) {
-    const empty = document.createElement("li");
-    empty.className = "empty";
-    empty.textContent = "Nothing stashed yet.";
-    list.append(empty);
+    appendEmptyItem(list, "Nothing stashed yet.");
   } else {
     for (const item of stash) {
-      list.append(renderItem(item, atLimit, escapeHatchClicked));
+      list.append(renderItem(item, atLimit, escapeHatchActive));
     }
   }
+
+  const resurfaceTitle =
+    app.querySelector<HTMLSpanElement>(".resurface-title")!;
+  resurfaceTitle.textContent = `Upcoming Queue (${upcomingTabs.length})`;
+
+  const resurfaceList = app.querySelector<HTMLUListElement>(".resurface-list")!;
+  resurfaceList.innerHTML = "";
+  const toggleContainer = app.querySelector<HTMLDivElement>(
+    ".resurface-toggle-container",
+  )!;
+
+  if (upcomingTabs.length === 0) {
+    appendEmptyItem(resurfaceList, "No upcoming tabs in queue.");
+    toggleContainer.style.display = "none";
+  } else {
+    const showAll = queueExpanded || upcomingTabs.length <= 3;
+    const itemsToShow = showAll ? upcomingTabs : upcomingTabs.slice(0, 3);
+
+    itemsToShow.forEach((tab) => {
+      resurfaceList.append(renderUpcomingItem(tab, times));
+    });
+
+    if (upcomingTabs.length > 3) {
+      toggleContainer.style.display = "flex";
+      toggleContainer.innerHTML = "";
+
+      const toggleBtn = document.createElement("button");
+      toggleBtn.className = "link";
+      toggleBtn.dataset.act = "toggle-queue-expand";
+      toggleBtn.textContent = queueExpanded
+        ? "Show less"
+        : `Show all (+${upcomingTabs.length - 3} more)`;
+      toggleBtn.style.fontWeight = "600";
+      toggleBtn.style.color = "var(--accent)";
+
+      toggleContainer.append(toggleBtn);
+    } else {
+      toggleContainer.style.display = "none";
+    }
+  }
+
+  const escapeContainer =
+    app.querySelector<HTMLDivElement>(".escape-container")!;
+  if (escapeHatchClicked) {
+    escapeContainer.innerHTML = `
+      <div style="display: flex; gap: 6px;">
+        <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? "" : " disabled"}>+ Tab</button>
+        <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? "" : " disabled"}>+ Window</button>
+      </div>
+    `;
+  } else {
+    escapeContainer.innerHTML = `
+      <button class="link" data-act="click-escape-hatch" title="Click to show escape actions" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); cursor: pointer; padding: 0;">Escape Hatch</button>
+    `;
+  }
+}
+
+function appendEmptyItem(list: HTMLUListElement, text: string): void {
+  const empty = document.createElement("li");
+  empty.className = "empty";
+  empty.textContent = text;
+  list.append(empty);
 }
 
 function getFaviconUrl(pageUrl: string): string {
@@ -147,7 +262,11 @@ function getFaviconUrl(pageUrl: string): string {
   return url.toString();
 }
 
-function renderItem(item: StashItem, atLimit: boolean, escapeHatchClicked: boolean): HTMLLIElement {
+function renderItem(
+  item: StashItem,
+  atLimit: boolean,
+  escapeHatchActive: boolean,
+): HTMLLIElement {
   const li = document.createElement("li");
   li.className = "stash-item";
 
@@ -156,7 +275,7 @@ function renderItem(item: StashItem, atLimit: boolean, escapeHatchClicked: boole
   restore.textContent = "Restore";
   restore.dataset.url = item.url;
   restore.dataset.act = "restore";
-  if (atLimit && !escapeHatchClicked) {
+  if (atLimit && !escapeHatchActive) {
     restore.disabled = true;
     restore.title = "Stash or close a tab to make room first";
   }
@@ -165,6 +284,10 @@ function renderItem(item: StashItem, atLimit: boolean, escapeHatchClicked: boole
   favicon.className = "favicon";
   favicon.src = getFaviconUrl(item.url);
   favicon.alt = "";
+  favicon.onerror = () => {
+    favicon.src =
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+  };
 
   const label = document.createElement("span");
   label.className = "url";
@@ -179,6 +302,70 @@ function renderItem(item: StashItem, atLimit: boolean, escapeHatchClicked: boole
   remove.title = "Remove from stash";
 
   li.append(restore, favicon, label, remove);
+  return li;
+}
+
+function formatElapsed(timestamp: number): string {
+  if (timestamp <= 0) return "never";
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function renderUpcomingItem(
+  tab: chrome.tabs.Tab,
+  times: TabTimes,
+): HTMLLIElement {
+  const li = document.createElement("li");
+  li.className = "resurface-item";
+
+  const favicon = document.createElement("img");
+  favicon.className = "favicon";
+  favicon.src = tab.url ? getFaviconUrl(tab.url) : "";
+  favicon.alt = "";
+  favicon.onerror = () => {
+    favicon.src =
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+  };
+
+  const label = document.createElement("a");
+  label.className = "title";
+  label.href = "#";
+  label.textContent =
+    tab.title?.trim() || (tab.url ? formatUrl(tab.url) : "Untitled");
+  label.title = "Click to go to tab";
+  label.dataset.act = "focus-tab";
+  label.dataset.id = tab.id?.toString();
+  label.dataset.windowId = tab.windowId?.toString();
+
+  const manualTime = tab.id != null ? times.lastAccessed?.[tab.id] : undefined;
+  const nativeTime = tab.lastAccessed;
+  const resolvedTime = nativeTime ?? manualTime ?? 0;
+
+  const timeBadge = document.createElement("span");
+  timeBadge.className = "time-badge";
+  timeBadge.textContent = formatElapsed(resolvedTime);
+  timeBadge.title =
+    resolvedTime > 0
+      ? new Date(resolvedTime).toLocaleString()
+      : "Never accessed";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "remove";
+  closeBtn.textContent = "×";
+  if (tab.id != null) {
+    closeBtn.dataset.id = tab.id.toString();
+  }
+  closeBtn.dataset.act = "close-tab";
+  closeBtn.title = "Close tab";
+
+  li.append(favicon, label, timeBadge, closeBtn);
   return li;
 }
 
@@ -228,10 +415,42 @@ app.addEventListener("click", async (e) => {
       escapeHatchClicked = true;
       await refresh();
       break;
+    case "toggle-queue-expand":
+      queueExpanded = !queueExpanded;
+      await refresh();
+      break;
+    case "focus-tab": {
+      e.preventDefault();
+      const tabIdStr = target.dataset.id;
+      const winIdStr = target.dataset.windowId;
+      if (tabIdStr) {
+        const tabId = parseInt(tabIdStr, 10);
+        await chrome.tabs.update(tabId, { active: true });
+        if (winIdStr) {
+          const winId = parseInt(winIdStr, 10);
+          await chrome.windows.update(winId, { focused: true });
+        }
+        window.close();
+      }
+      break;
+    }
+    case "close-tab": {
+      const tabIdStr = target.dataset.id;
+      if (tabIdStr) {
+        const tabId = parseInt(tabIdStr, 10);
+        await chrome.tabs.remove(tabId);
+        await refresh();
+      }
+      break;
+    }
     case "restore":
       if (url && !(target as HTMLButtonElement).disabled) {
         await removeFromStash(url);
-        if (escapeHatchClicked) {
+        const activeTab = currentState?.activeTab;
+        const isEscapeTab = !!activeTab && !!activeTab.url && activeTab.url.includes("escape=");
+        if (isEscapeTab && activeTab && activeTab.id != null) {
+          await chrome.tabs.update(activeTab.id, { url });
+        } else if (escapeHatchClicked) {
           await chrome.runtime.sendMessage({ type: "escape-hatch-tab", url });
         } else {
           await chrome.tabs.create({ url });

@@ -6,6 +6,7 @@ import {
   isOverLimit,
   isStashableUrl,
   selectOldestTab,
+  sortTabsForResurfacing,
   type TabInfo,
   type TabTimes,
 } from '../src/tabs.ts';
@@ -19,6 +20,7 @@ const baseSettings: Settings = {
   limitBehavior: 'focus',
   oldestDefinition: 'creation',
   excludePinned: true,
+  enableStash: true,
   syncStash: false,
   skipResurfaceDomains: [],
   priorityResurfaceDomains: [],
@@ -30,11 +32,15 @@ function tab(id: number, extra: Partial<TabInfo> = {}): TabInfo {
 }
 
 function times(creation: Record<number, number> = {}): TabTimes {
-  return { creation };
+  return { creation, resurfaced: {}, lastAccessed: {} };
 }
 
 test('the default configuration recycles the least-recently-used tab', () => {
   assert.equal(DEFAULT_SETTINGS.oldestDefinition, 'lru');
+});
+
+test('enableStash defaults to true in DEFAULT_SETTINGS', () => {
+  assert.equal(DEFAULT_SETTINGS.enableStash, true);
 });
 
 test('countRelevantTabs counts every tab when excludePinned is off', () => {
@@ -264,6 +270,32 @@ test('selectOldestTab returns null if all candidates are within the cooldown per
   assert.equal(oldest, null);
 });
 
+test('selectOldestTab ignores cooldown period skip if count of tabs in cooldown is >= limit', () => {
+  const tabs = [
+    tab(1, { lastAccessed: 100 }),
+    tab(2, { lastAccessed: 200 }),
+  ];
+  const now = Date.now();
+  const oldest = selectOldestTab(
+    tabs,
+    99,
+    {
+      creation: {},
+      resurfaced: {
+        1: now - 2 * 60 * 1000,
+        2: now - 3 * 60 * 1000,
+      },
+    },
+    {
+      ...baseSettings,
+      maxTabs: 2, // limit is 2, and we have 2 tabs in cooldown (so cooldownCount >= maxTabs)
+      oldestDefinition: 'lru',
+      resurfaceCooldown: 5,
+    }
+  );
+  assert.equal(oldest?.id, 1); // should not be null, returns oldest
+});
+
 
 test('isStashableUrl accepts only http(s) destinations', () => {
   assert.equal(isStashableUrl('https://example.com'), true);
@@ -294,4 +326,45 @@ test('withUrlAdded caps the list at 50 entries, keeping the newest', () => {
   }
   assert.equal(items.length, 50);
   assert.equal(items[0].url, 'https://site59.com');
+});
+
+test('sortTabsForResurfacing sorts tabs oldest-first', () => {
+  const tabs = [
+    tab(1, { lastAccessed: 300 }),
+    tab(2, { lastAccessed: 100 }),
+    tab(3, { lastAccessed: 200 }),
+  ];
+  const sorted = sortTabsForResurfacing(tabs, times(), { ...baseSettings, oldestDefinition: 'lru' });
+  assert.deepEqual(sorted.map((t) => t.id), [2, 3, 1]);
+});
+
+test('sortTabsForResurfacing prioritizes priority domains', () => {
+  const tabs = [
+    tab(1, { url: 'https://google.com', lastAccessed: 100 }),
+    tab(2, { url: 'https://github.com', lastAccessed: 300 }),
+    tab(3, { url: 'https://github.com', lastAccessed: 200 }),
+  ];
+  const sorted = sortTabsForResurfacing(tabs, times(), {
+    ...baseSettings,
+    oldestDefinition: 'lru',
+    priorityResurfaceDomains: ['github.com'],
+  });
+  assert.deepEqual(sorted.map((t) => t.id), [3, 2, 1]);
+});
+
+test('sortTabsForResurfacing falls back to times.lastAccessed if tab.lastAccessed is missing', () => {
+  const tabs = [
+    tab(1),
+    tab(2),
+    tab(3),
+  ];
+  const sorted = sortTabsForResurfacing(
+    tabs,
+    {
+      creation: {},
+      lastAccessed: { 1: 300, 2: 100, 3: 200 },
+    },
+    { ...baseSettings, oldestDefinition: 'lru' }
+  );
+  assert.deepEqual(sorted.map((t) => t.id), [2, 3, 1]);
 });

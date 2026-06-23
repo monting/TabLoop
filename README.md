@@ -6,11 +6,15 @@ TabLoop is a modern Chrome Extension designed to help you conquer tab hoarding. 
 
 - **Strict Tab Limits**: Define your absolute maximum number of tabs globally or per-window.
 - **Smart Recycling**: Choose between recycling the *oldest created* tab or the *least recently used* (LRU) tab.
-- **Stash**: Park any open tab in your Stash to instantly free up a slot — it closes but is saved (with its title) for later. Tabs blocked at the limit land here too, so nothing is lost. A toolbar badge shows how many are waiting; restore them from the popup once you've made room.
+- **Stash**: Park any open tab in your Stash to instantly free up a slot — it closes but is saved for later. Restore them from the popup on any signed-in device.
 - **Live Tab Counter**: The toolbar popup shows your current tab count against your limit at a glance.
 - **Pinned Tab Protection**: Exclude your important pinned tabs from being touched (and from counting toward the limit).
 - **System-Page Exemption**: Chrome's internal pages (`chrome://…`) and TabLoop's own settings page never count toward your limit and are never recycled — only the new-tab page stays enforced.
 - **Premium Interface**: Configure your preferences via a sleek, dark-glassmorphism options page.
+
+## Design Notes
+
+- **No "Hijack New Tab Page" feature (removed).** TabLoop deliberately does not override Chrome's new-tab page. An earlier version shipped a toggle that swapped the new-tab page for a TabLoop dashboard, but Manifest V3 registers `chrome_url_overrides` statically — there is no API to turn the override off at runtime. That made the toggle's "off" state impossible to honor: with the override always active, we could never fall back to the browser's default (blank) new-tab page, so turning the setting on or off had no real effect. The feature (the override, the `hijackNewTab` setting, and the new-tab exemption it implied) was removed entirely rather than ship a control that can't work. New tabs now always show Chrome's native new-tab page.
 
 ## How to Run Locally for Development
 

@@ -7,9 +7,11 @@ const limitScopeSelect = document.getElementById('limitScope') as HTMLSelectElem
 const limitBehaviorSelect = document.getElementById('limitBehavior') as HTMLSelectElement;
 const oldestDefinitionSelect = document.getElementById('oldestDefinition') as HTMLSelectElement;
 const syncStashCheckbox = document.getElementById('syncStash') as HTMLInputElement;
+const enableStashCheckbox = document.getElementById('enableStash') as HTMLInputElement;
 const excludePinnedCheckbox = document.getElementById('excludePinned') as HTMLInputElement;
-const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
-const statusText = document.getElementById('status') as HTMLSpanElement;
+const statusContainer = document.getElementById('statusContainer') as HTMLDivElement;
+const statusIcon = document.getElementById('statusIcon') as HTMLSpanElement;
+const statusText = document.getElementById('statusText') as HTMLSpanElement;
 const resurfaceCooldownInput = document.getElementById('resurfaceCooldown') as HTMLInputElement;
 const decrementLimitBtn = document.getElementById('decrementLimit') as HTMLButtonElement;
 const incrementLimitBtn = document.getElementById('incrementLimit') as HTMLButtonElement;
@@ -36,7 +38,10 @@ function getFavicon(item: string): string {
     if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
       clean = 'https://' + clean;
     }
-    return `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(clean)}&size=32`;
+    const url = new URL(chrome.runtime.getURL('/_favicon/'));
+    url.searchParams.set('pageUrl', clean);
+    url.searchParams.set('size', '32');
+    return url.toString();
   }
   return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
 }
@@ -152,10 +157,12 @@ function renderAll() {
   renderDomainList(skipDomainList, skipDomains, (idx) => {
     skipDomains.splice(idx, 1);
     renderAll();
+    triggerSave();
   });
   renderDomainList(priorityDomainList, priorityDomains, (idx) => {
     priorityDomains.splice(idx, 1);
     renderAll();
+    triggerSave();
   });
   void updateSuggestions(
     skipSuggestions,
@@ -165,10 +172,12 @@ function renderAll() {
     (d) => {
       skipDomains.push(d);
       renderAll();
+      triggerSave();
     },
     (d) => {
       priorityDomains.push(d);
       renderAll();
+      triggerSave();
     }
   );
 }
@@ -179,6 +188,7 @@ addSkipDomainBtn.addEventListener('click', () => {
     skipDomains.push(domain);
     skipDomainInput.value = '';
     renderAll();
+    triggerSave();
   }
 });
 skipDomainInput.addEventListener('keydown', (e) => {
@@ -194,6 +204,7 @@ addPriorityDomainBtn.addEventListener('click', () => {
     priorityDomains.push(item);
     priorityDomainInput.value = '';
     renderAll();
+    triggerSave();
   }
 });
 priorityDomainInput.addEventListener('keydown', (e) => {
@@ -206,21 +217,25 @@ priorityDomainInput.addEventListener('keydown', (e) => {
 decrementLimitBtn.addEventListener('click', () => {
   const current = parseInt(maxTabsInput.value, 10) || 10;
   maxTabsInput.value = Math.max(1, current - 1).toString();
+  triggerSave();
 });
 
 incrementLimitBtn.addEventListener('click', () => {
   const current = parseInt(maxTabsInput.value, 10) || 10;
   maxTabsInput.value = Math.min(500, current + 1).toString();
+  triggerSave();
 });
 
 decrementCooldownBtn.addEventListener('click', () => {
   const current = parseInt(resurfaceCooldownInput.value, 10) || 0;
   resurfaceCooldownInput.value = Math.max(0, current - 1).toString();
+  triggerSave();
 });
 
 incrementCooldownBtn.addEventListener('click', () => {
   const current = parseInt(resurfaceCooldownInput.value, 10) || 0;
   resurfaceCooldownInput.value = Math.min(1440, current + 1).toString();
+  triggerSave();
 });
 
 // Restore saved settings.
@@ -229,7 +244,9 @@ void loadSettings().then((settings) => {
   limitScopeSelect.value = settings.limitScope;
   limitBehaviorSelect.value = settings.limitBehavior || 'focus';
   oldestDefinitionSelect.value = settings.oldestDefinition;
+  enableStashCheckbox.checked = !!settings.enableStash;
   syncStashCheckbox.checked = !!settings.syncStash;
+  syncStashCheckbox.disabled = !settings.enableStash;
   excludePinnedCheckbox.checked = settings.excludePinned;
   resurfaceCooldownInput.value = settings.resurfaceCooldown.toString();
   skipDomains = settings.skipResurfaceDomains || [];
@@ -249,7 +266,38 @@ function readResurfaceCooldown(): number {
   return Math.min(1440, Math.max(0, parsed));
 }
 
-saveBtn.addEventListener('click', async () => {
+let hideTimer: ReturnType<typeof setTimeout> | undefined;
+
+function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...args: Parameters<T>) => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return (...args: Parameters<T>) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function showSavingStatus() {
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    hideTimer = undefined;
+  }
+  statusContainer.className = 'visible saving';
+  statusIcon.innerHTML = `
+    <svg class="spinner" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="2" x2="12" y2="6"></line>
+      <line x1="12" y1="18" x2="12" y2="22"></line>
+      <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+      <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+      <line x1="2" y1="12" x2="6" y2="12"></line>
+      <line x1="18" y1="12" x2="22" y2="12"></line>
+      <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+      <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+    </svg>
+  `;
+  statusText.textContent = 'Saving...';
+}
+
+async function saveCurrentSettings() {
   const oldSettings = await loadSettings();
   const newSyncStash = syncStashCheckbox.checked;
 
@@ -259,26 +307,25 @@ saveBtn.addEventListener('click', async () => {
     limitBehavior: limitBehaviorSelect.value as Settings['limitBehavior'],
     oldestDefinition: oldestDefinitionSelect.value as Settings['oldestDefinition'],
     excludePinned: excludePinnedCheckbox.checked,
+    enableStash: enableStashCheckbox.checked,
     syncStash: newSyncStash,
     skipResurfaceDomains: skipDomains,
     priorityResurfaceDomains: priorityDomains,
     resurfaceCooldown: readResurfaceCooldown(),
   };
-  // Reflect any clamping back to the field.
-  maxTabsInput.value = settings.maxTabs.toString();
-  resurfaceCooldownInput.value = settings.resurfaceCooldown.toString();
+
+  // Clamp input values back to field limits if focus is lost or if changed by adjust buttons.
+  if (document.activeElement !== maxTabsInput) {
+    maxTabsInput.value = settings.maxTabs.toString();
+  }
+  if (document.activeElement !== resurfaceCooldownInput) {
+    resurfaceCooldownInput.value = settings.resurfaceCooldown.toString();
+  }
 
   if (oldSettings.syncStash !== newSyncStash) {
-    // 1. Read stashed items from the current/old location
     const itemsToMigrate = await getStash();
-
-    // 2. Save the settings so getStash/setStash use the new location
     await saveSettings(settings);
-
-    // 3. Read any existing items from the new location to merge
     const existingItems = await getStash();
-
-    // 4. Merge them (newest first, unique by URL)
     const merged = new Map<string, StashItem>();
     for (const item of [...existingItems, ...itemsToMigrate]) {
       const existing = merged.get(item.url);
@@ -289,18 +336,43 @@ saveBtn.addEventListener('click', async () => {
     const mergedItems = Array.from(merged.values())
       .sort((a, b) => b.time - a.time);
 
-    // 5. Save the merged list to the new location
     await setStash(mergedItems);
 
-    // 6. Remove the stash from the old storage to clean up
     const oldStorage = oldSettings.syncStash ? chrome.storage.sync : chrome.storage.local;
     await oldStorage.remove(STASH_KEY);
   } else {
     await saveSettings(settings);
   }
 
-  statusText.style.opacity = '1';
-  setTimeout(() => {
-    statusText.style.opacity = '0';
-  }, 2500);
+  statusContainer.className = 'visible saved';
+  statusIcon.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+  `;
+  statusText.textContent = 'Settings saved automatically!';
+
+  hideTimer = setTimeout(() => {
+    statusContainer.classList.remove('visible');
+  }, 2000);
+}
+
+const debouncedSave = debounce(saveCurrentSettings, 300);
+
+function triggerSave() {
+  showSavingStatus();
+  debouncedSave();
+}
+
+// Add event listeners for inputs
+maxTabsInput.addEventListener('input', triggerSave);
+resurfaceCooldownInput.addEventListener('input', triggerSave);
+limitScopeSelect.addEventListener('change', triggerSave);
+limitBehaviorSelect.addEventListener('change', triggerSave);
+oldestDefinitionSelect.addEventListener('change', triggerSave);
+enableStashCheckbox.addEventListener('change', () => {
+  syncStashCheckbox.disabled = !enableStashCheckbox.checked;
+  triggerSave();
 });
+syncStashCheckbox.addEventListener('change', triggerSave);
+excludePinnedCheckbox.addEventListener('change', triggerSave);

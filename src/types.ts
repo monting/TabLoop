@@ -4,6 +4,7 @@ export interface Settings {
   limitBehavior: 'move' | 'focus';
   oldestDefinition: 'creation' | 'lru';
   excludePinned: boolean;
+  enableStash: boolean;
   syncStash: boolean;
   skipResurfaceDomains: string[];
   priorityResurfaceDomains: string[];
