@@ -118,9 +118,9 @@ function initSkeleton(): void {
     <div class="card stash">
       <div class="stash-head">
         <span class="stash-title">Stash</span>
+        <button class="stash-btn" data-act="stash-current"></button>
         <div class="stash-clear-container"></div>
       </div>
-      <button class="stash-btn" data-act="stash-current" style="margin-bottom: 12px;"></button>
       <ul class="stash-list"></ul>
     </div>
   `;
