@@ -76,7 +76,7 @@ body {
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
     border-radius: 16px;
-    padding: 20px;
+    padding: 10px;
     backdrop-filter: blur(10px);
     animation: fadeInUp 0.5s ease-out 0.1s both;
 }
@@ -84,6 +84,8 @@ body {
 /* Meter */
 .meter {
     text-align: center;
+    padding-left: 20px;
+    padding-right: 20px;
 }
 
 .meter .count {
@@ -228,14 +230,14 @@ body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 2px;
 }
 
 .stash-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 6px 6px 0;
+    padding: 4px 6px 4px 0;
 }
 
 .stash-item .favicon {
