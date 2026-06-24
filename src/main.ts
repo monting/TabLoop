@@ -174,10 +174,7 @@ function render(state: PopupState): void {
     : "This page can't be stashed";
 
   const stashTitle = app.querySelector<HTMLSpanElement>(".stash-title")!;
-  stashTitle.replaceChildren("Stash");
-  if (stash.length) {
-    stashTitle.append(" ", spanWith("pill", String(stash.length)));
-  }
+  stashTitle.textContent = `Stash (${stash.length})`;
 
   const stashClearContainer = app.querySelector<HTMLDivElement>(
     ".stash-clear-container",
