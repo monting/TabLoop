@@ -146,26 +146,26 @@ body {
 
 /* Stash current tab button */
 .stash-btn {
-    width: 100%;
-    padding: 12px;
+    padding: 5px 24px;
     font-family: var(--font-family);
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     color: white;
     background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
     border: none;
-    border-radius: 12px;
+    border-radius: 999px;
     cursor: pointer;
     transition:
         transform 0.2s ease,
         box-shadow 0.2s ease,
         opacity 0.2s ease;
-    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.35);
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
+    white-space: nowrap;
 }
 
 .stash-btn:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
 }
 
 .stash-btn:active:not(:disabled) {
@@ -190,6 +190,7 @@ body {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 10px;
+    gap: 8px;
 }
 
 .stash-title {
@@ -198,6 +199,13 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-secondary);
+    flex: 1;
+}
+
+.stash-clear-container {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .pill {
