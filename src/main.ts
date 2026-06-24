@@ -134,6 +134,7 @@ function render(state: PopupState): void {
   const atLimit = count >= max;
   const ratio = max > 0 ? count / max : 0;
   const level = ratio >= 1 ? "over" : ratio >= 0.8 ? "high" : "ok";
+  const remaining = Math.max(0, max - count);
   const canStash = !!activeTab && isStashableUrl(activeTab.url);
 
   if (!app.querySelector(".header")) {
@@ -158,7 +159,7 @@ function render(state: PopupState): void {
     ? settings.enableStash
       ? "At limit — stash a tab to free a slot"
       : "At limit — close a tab to free a slot"
-    : "";
+    : `${remaining} slot${remaining === 1 ? "" : "s"} remaining`;
 
   const stashCard = app.querySelector<HTMLDivElement>(".card.stash")!;
   if (settings.enableStash) {
