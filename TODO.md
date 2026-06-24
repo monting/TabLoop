@@ -3,3 +3,4 @@
 - handle session restores?
 - don't count "new tabs", and make its UI a list to select which tab to close or open.
 - in settings show the "saved" notification at the top instead of bottom - short screens can't see
+- change default limit to 30 instead of 100
