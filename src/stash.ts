@@ -35,9 +35,10 @@ export function withUrlAdded(
   url: string,
   now: number,
   title?: string,
+  favIconUrl?: string,
 ): StashItem[] {
   const deduped = items.filter((i) => i.url !== url);
-  deduped.unshift({ url, title, time: now });
+  deduped.unshift({ url, title, time: now, favIconUrl });
   return deduped.slice(0, MAX_ITEMS);
 }
 
@@ -80,8 +81,8 @@ function mutateStash(transform: (items: StashItem[]) => StashItem[]): Promise<vo
   });
 }
 
-export function addToStash(url: string, title?: string, now = Date.now()): Promise<void> {
-  return mutateStash((items) => withUrlAdded(items, url, now, title));
+export function addToStash(url: string, title?: string, favIconUrl?: string, now = Date.now()): Promise<void> {
+  return mutateStash((items) => withUrlAdded(items, url, now, title, favIconUrl));
 }
 
 export function removeFromStash(url: string): Promise<void> {

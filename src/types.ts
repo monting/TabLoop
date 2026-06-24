@@ -16,4 +16,5 @@ export interface StashItem {
   url: string;
   title?: string;
   time: number;
+  favIconUrl?: string;
 }

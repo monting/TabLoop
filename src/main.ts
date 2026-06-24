@@ -15,6 +15,7 @@ interface ActiveTab {
   id: number;
   url?: string;
   title?: string;
+  favIconUrl?: string;
 }
 
 interface PopupState {
@@ -72,7 +73,7 @@ async function readState(): Promise<PopupState> {
     stash,
     activeTab:
       active?.id != null
-        ? { id: active.id, url: active.url, title: active.title }
+        ? { id: active.id, url: active.url, title: active.title, favIconUrl: active.favIconUrl }
         : null,
     upcomingTabs,
     times,
@@ -119,7 +120,7 @@ function initSkeleton(): void {
 
     <div class="card resurface-queue">
       <div class="resurface-head">
-        <span class="resurface-title">Upcoming Queue</span>
+        <span class="resurface-title">Stale Queue</span>
       </div>
       <ul class="resurface-list"></ul>
       <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;"></div>
@@ -207,7 +208,7 @@ function render(state: PopupState): void {
 
   const resurfaceTitle =
     app.querySelector<HTMLSpanElement>(".resurface-title")!;
-  resurfaceTitle.textContent = `Upcoming Queue (${upcomingTabs.length})`;
+  resurfaceTitle.textContent = `Stale Queue (${upcomingTabs.length})`;
 
   const resurfaceList = app.querySelector<HTMLUListElement>(".resurface-list")!;
   resurfaceList.replaceChildren();
@@ -216,7 +217,7 @@ function render(state: PopupState): void {
   )!;
 
   if (upcomingTabs.length === 0) {
-    appendEmptyItem(resurfaceList, "No upcoming tabs in queue.");
+    appendEmptyItem(resurfaceList, "No stale tabs in queue.");
     toggleContainer.style.display = "none";
   } else {
     const showAll = queueExpanded || upcomingTabs.length <= 3;
@@ -326,7 +327,7 @@ function renderItem(
 
   const favicon = document.createElement("img");
   favicon.className = "favicon";
-  favicon.src = getFaviconUrl(item.url);
+  favicon.src = item.favIconUrl || getFaviconUrl(item.url);
   favicon.alt = "";
   favicon.onerror = () => {
     favicon.src = FALLBACK_FAVICON;
@@ -441,7 +442,7 @@ app.addEventListener("click", async (e) => {
     case "stash-current": {
       const active = currentState?.activeTab;
       if (active && isStashableUrl(active.url)) {
-        await addToStash(active.url, active.title);
+        await addToStash(active.url, active.title, active.favIconUrl);
         await chrome.tabs.remove(active.id);
         await refresh();
       }
