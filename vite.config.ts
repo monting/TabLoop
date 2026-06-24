@@ -9,6 +9,7 @@ export default defineConfig({
       browser: target,
       manifest: "manifest.json",
       additionalInputs: ["dashboard.html"],
+      disableAutoLaunch: true,
     }),
   ],
   build: {
@@ -16,6 +17,7 @@ export default defineConfig({
     // other and can be zipped/loaded independently.
     outDir: `dist/${target}`,
     minify: false,
+    watch: {},
   },
 });
 
