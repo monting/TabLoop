@@ -15,6 +15,7 @@ interface ActiveTab {
   id: number;
   url?: string;
   title?: string;
+  favIconUrl?: string;
 }
 
 interface PopupState {
@@ -72,7 +73,7 @@ async function readState(): Promise<PopupState> {
     stash,
     activeTab:
       active?.id != null
-        ? { id: active.id, url: active.url, title: active.title }
+        ? { id: active.id, url: active.url, title: active.title, favIconUrl: active.favIconUrl }
         : null,
     upcomingTabs,
     times,
@@ -326,7 +327,7 @@ function renderItem(
 
   const favicon = document.createElement("img");
   favicon.className = "favicon";
-  favicon.src = getFaviconUrl(item.url);
+  favicon.src = item.favIconUrl || getFaviconUrl(item.url);
   favicon.alt = "";
   favicon.onerror = () => {
     favicon.src = FALLBACK_FAVICON;
@@ -441,7 +442,7 @@ app.addEventListener("click", async (e) => {
     case "stash-current": {
       const active = currentState?.activeTab;
       if (active && isStashableUrl(active.url)) {
-        await addToStash(active.url, active.title);
+        await addToStash(active.url, active.title, active.favIconUrl);
         await chrome.tabs.remove(active.id);
         await refresh();
       }
