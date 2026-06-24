@@ -456,6 +456,9 @@ body:not(.dashboard-page) {
     padding-right: 2px !important;
     width: 53px;
 }
+.dashboard-grid .time-badge {
+    width: 66px;
+}
 
 .time-badge .stash-text {
     display: none;
