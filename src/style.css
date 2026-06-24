@@ -219,7 +219,7 @@ body:not(.dashboard-page) {
     list-style: none;
     margin: 0;
     padding: 0;
-    max-height: 220px;
+    max-height: 120px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
