@@ -364,6 +364,7 @@ body {
     flex-direction: column;
     padding: 16px;
     padding-bottom: 6px;
+    height: 173px;
 }
 
 .resurface-head {
