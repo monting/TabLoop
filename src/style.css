@@ -364,6 +364,7 @@ body {
     flex-direction: column;
     padding: 16px;
     padding-bottom: 6px;
+    height: 173px;
 }
 
 .resurface-head {
@@ -384,7 +385,7 @@ body {
     list-style: none;
     margin: 0;
     padding: 0;
-    max-height: unset;
+    max-height: 164px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;

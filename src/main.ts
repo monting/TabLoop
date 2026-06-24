@@ -29,7 +29,6 @@ interface PopupState {
 
 let currentState: PopupState | null = null;
 let escapeHatchClicked = false;
-let queueExpanded = false;
 
 function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   if (tab.id == null) return null;
@@ -109,6 +108,13 @@ function initSkeleton(): void {
       <p class="hint"></p>
     </div>
 
+    <div class="card resurface-queue">
+      <div class="resurface-head">
+        <span class="resurface-title">Stale Queue</span>
+      </div>
+      <ul class="resurface-list"></ul>
+    </div>
+
     <div class="card stash">
       <div class="stash-head">
         <span class="stash-title">Stash</span>
@@ -116,14 +122,6 @@ function initSkeleton(): void {
       </div>
       <button class="stash-btn" data-act="stash-current" style="margin-bottom: 12px;"></button>
       <ul class="stash-list"></ul>
-    </div>
-
-    <div class="card resurface-queue">
-      <div class="resurface-head">
-        <span class="resurface-title">Stale Queue</span>
-      </div>
-      <ul class="resurface-list"></ul>
-      <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;"></div>
     </div>
   `;
 }
@@ -212,38 +210,13 @@ function render(state: PopupState): void {
 
   const resurfaceList = app.querySelector<HTMLUListElement>(".resurface-list")!;
   resurfaceList.replaceChildren();
-  const toggleContainer = app.querySelector<HTMLDivElement>(
-    ".resurface-toggle-container",
-  )!;
 
   if (upcomingTabs.length === 0) {
     appendEmptyItem(resurfaceList, "No stale tabs in queue.");
-    toggleContainer.style.display = "none";
   } else {
-    const showAll = queueExpanded || upcomingTabs.length <= 3;
-    const itemsToShow = showAll ? upcomingTabs : upcomingTabs.slice(0, 4);
-
-    itemsToShow.forEach((tab) => {
+    upcomingTabs.forEach((tab) => {
       resurfaceList.append(renderUpcomingItem(tab, times));
     });
-
-    if (upcomingTabs.length > 3 && !queueExpanded) {
-      toggleContainer.style.display = "flex";
-
-      const toggleBtn = document.createElement("button");
-      toggleBtn.className = "link";
-      toggleBtn.dataset.act = "toggle-queue-expand";
-      toggleBtn.textContent = `Show all (+${upcomingTabs.length - 3} more)`;
-      toggleBtn.style.fontWeight = "600";
-      toggleBtn.style.color = "var(--accent)";
-
-      toggleContainer.replaceChildren(toggleBtn);
-      resurfaceList.style.maxHeight = "";
-    } else {
-      toggleContainer.style.display = "none";
-      toggleContainer.replaceChildren();
-      resurfaceList.style.maxHeight = queueExpanded ? "164px" : "";
-    }
   }
 
   const escapeContainer =
@@ -458,10 +431,6 @@ app.addEventListener("click", async (e) => {
       break;
     case "click-escape-hatch":
       escapeHatchClicked = true;
-      await refresh();
-      break;
-    case "toggle-queue-expand":
-      queueExpanded = !queueExpanded;
       await refresh();
       break;
     case "focus-tab": {
