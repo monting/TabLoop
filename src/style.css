@@ -445,6 +445,34 @@ body:not(.dashboard-page) {
     margin-left: auto;
     flex-shrink: 0;
     user-select: none;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease-in-out;
+    width: 66px;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    width: 53px;
+}
+
+.time-badge .stash-text {
+    display: none;
+}
+
+.time-badge:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.time-badge:hover .time-text {
+    display: none;
+}
+
+.time-badge:hover .stash-text {
+    display: inline;
 }
 
 @keyframes fadeInDown {

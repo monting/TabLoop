@@ -1,9 +1,9 @@
 import './style.css';
 import type { Settings, StashItem } from './types';
 import type { TabInfo, TabTimes } from './tabs';
-import { countRelevantTabs, sortTabsForResurfacing } from './tabs';
+import { countRelevantTabs, isStashableUrl, sortTabsForResurfacing } from './tabs';
 import { loadSettings } from './settings';
-import { clearStash, getStash, removeFromStash } from './stash';
+import { addToStash, clearStash, getStash, removeFromStash } from './stash';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -163,10 +163,24 @@ function renderUpcomingItem(tab: chrome.tabs.Tab, times: TabTimes): HTMLLIElemen
   const nativeTime = tab.lastAccessed;
   const resolvedTime = nativeTime ?? manualTime ?? 0;
 
-  const timeBadge = document.createElement('span');
+  const timeBadge = document.createElement('button');
+  timeBadge.type = 'button';
   timeBadge.className = 'time-badge';
-  timeBadge.textContent = formatElapsed(resolvedTime);
-  timeBadge.title = resolvedTime > 0 ? new Date(resolvedTime).toLocaleString() : 'Never accessed';
+  timeBadge.title = 'Stash and close tab';
+  timeBadge.dataset.act = 'stash-tab';
+  if (tab.id != null) {
+    timeBadge.dataset.id = tab.id.toString();
+  }
+
+  const timeText = document.createElement('span');
+  timeText.className = 'time-text';
+  timeText.textContent = formatElapsed(resolvedTime);
+
+  const stashText = document.createElement('span');
+  stashText.className = 'stash-text';
+  stashText.textContent = 'Stash';
+
+  timeBadge.append(timeText, stashText);
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'remove';
@@ -294,12 +308,12 @@ function render(state: DashboardState): void {
   stashClearContainer.innerHTML = stash.length ? '<button class="link" data-act="clear">Clear all</button>' : '';
 
   const resurfaceTitle = app.querySelector<HTMLSpanElement>('.resurface-title')!;
-  resurfaceTitle.textContent = `Upcoming Queue (${upcomingTabs.length})`;
+  resurfaceTitle.textContent = `Stale Queue (${upcomingTabs.length})`;
 
   const resurfaceList = app.querySelector<HTMLUListElement>('.resurface-list')!;
   resurfaceList.innerHTML = '';
   if (upcomingTabs.length === 0) {
-    appendEmptyItem(resurfaceList, 'No upcoming tabs in queue.');
+    appendEmptyItem(resurfaceList, 'No stale tabs in queue.');
   } else {
     upcomingTabs.forEach((tab) => {
       resurfaceList.append(renderUpcomingItem(tab, times));
@@ -421,6 +435,24 @@ app.addEventListener('click', async (e) => {
         const tabId = parseInt(tabIdStr, 10);
         await chrome.tabs.remove(tabId);
         await refresh();
+      }
+      break;
+    }
+
+    case 'stash-tab': {
+      const tabIdStr = target.dataset.id;
+      if (tabIdStr) {
+        const tabId = parseInt(tabIdStr, 10);
+        try {
+          const tab = await chrome.tabs.get(tabId);
+          if (tab && tab.url && isStashableUrl(tab.url)) {
+            await addToStash(tab.url, tab.title, tab.favIconUrl);
+            await chrome.tabs.remove(tabId);
+            await refresh();
+          }
+        } catch (err) {
+          console.error('Failed to stash tab', err);
+        }
       }
       break;
     }

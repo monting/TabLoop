@@ -18,22 +18,22 @@ export interface TabTimes {
 }
 
 /**
- * The extension's own settings page. Anchored to the chrome-extension:// origin so
- * arbitrary web pages whose path merely contains "options.html" are NOT exempted.
+ * The extension's own pages (options and dashboard). Anchored to the chrome-extension://
+ * or moz-extension:// origin so arbitrary web pages are NOT exempted.
  */
-const OPTIONS_PAGE = /^chrome-extension:\/\/[^/]+\/.*options\.html/i;
+const EXTENSION_PAGES = /^(chrome-extension|moz-extension):\/\/[^/]+\/.*(options|dashboard)\.html/i;
 
 /** Chrome's new-tab page stays enforced — it's the vehicle for opening new web tabs. */
 const NEW_TAB_PAGE = /^chrome:\/\/(newtab|new-tab-page)/i;
 
 /**
- * URLs exempt from the tab limit entirely: the extension's own settings page and
- * Chrome's internal pages (chrome://…), excluding the new-tab page. Exempt tabs
+ * URLs exempt from the tab limit entirely: the extension's own settings and dashboard pages,
+ * and Chrome's internal pages (chrome://…), excluding the new-tab page. Exempt tabs
  * never count toward the limit and are never recycled.
  */
 export function isExemptUrl(url: string | undefined): boolean {
   if (!url) return false;
-  if (OPTIONS_PAGE.test(url)) return true;
+  if (EXTENSION_PAGES.test(url)) return true;
   return /^chrome:\/\//i.test(url) && !NEW_TAB_PAGE.test(url);
 }
 
