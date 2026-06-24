@@ -8,6 +8,7 @@ export default defineConfig({
     webExtension({
       browser: target,
       manifest: "manifest.json",
+      additionalInputs: ["dashboard.html"],
     }),
   ],
   build: {

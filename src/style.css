@@ -19,8 +19,6 @@
 
 body {
     margin: 0;
-    width: 450px;
-    min-height: 580px;
     background-color: var(--bg-color);
     background-image:
         radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
@@ -28,8 +26,13 @@ body {
         radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 0.3) 0, transparent 50%);
     color: var(--text-primary);
     font-family: var(--font-family);
-    overflow: hidden;
     -webkit-font-smoothing: antialiased;
+}
+
+body:not(.dashboard-page) {
+    width: 450px;
+    min-height: 580px;
+    overflow: hidden;
 }
 
 #app {
@@ -370,6 +373,7 @@ body {
 .resurface-head {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     margin-bottom: 10px;
 }
 
@@ -404,6 +408,7 @@ body {
     align-items: center;
     gap: 8px;
     padding: 4px 0;
+
 }
 
 .resurface-item .favicon {
@@ -461,5 +466,204 @@ body {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* Dashboard Desktop Styles */
+body.dashboard-page {
+    display: none;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    overflow-y: auto;
+    background-color: #0f172a;
+    color: #f8fafc;
+    font-family: var(--font-family);
+    box-sizing: border-box;
+}
+
+body.dashboard-page.ready {
+    display: block;
+}
+
+body.dashboard-page #app {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    box-sizing: border-box;
+}
+
+body.dashboard-page .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+    align-items: start;
+}
+
+body.dashboard-page .main-column {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+body.dashboard-page .resurface-item {
+    width: 1100px;
+}
+
+body.dashboard-page .sidebar-column {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Card overrides for Desktop Page */
+body.dashboard-page .card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(12px);
+    height: auto;
+}
+
+/* Header style for sections in sidebar */
+.section-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 12px;
+}
+
+/* Stale Queue List (Desktop version) */
+body.dashboard-page .resurface-list {
+    max-height: none;
+    overflow-y: visible;
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* space between larger items */
+}
+
+/* Make stale queue items larger on desktop */
+body.dashboard-page .resurface-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    padding: 12px 16px;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+body.dashboard-page .resurface-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+body.dashboard-page .resurface-item .favicon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}
+
+body.dashboard-page .resurface-item .title {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+body.dashboard-page .time-badge {
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+/* Stash List Desktop version */
+body.dashboard-page .stash-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Toast styling */
+.toast-notification {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translate(-50%, -20px);
+    z-index: 1000;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease,
+        visibility 0.3s;
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    background: rgba(15, 23, 42, 0.9);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.toast-notification.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+}
+
+/* Escape Hatch Banner on New Tab/Window */
+.escape-hatch-container {
+    display: none;
+}
+
+.escape-hatch-banner {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%);
+    border: 1px dashed rgba(139, 92, 246, 0.35);
+    border-radius: 16px;
+    padding: 16px 20px;
+    text-align: center;
+    margin-bottom: 4px;
+    backdrop-filter: blur(10px);
+    animation: pulseGlow 3s infinite ease-in-out;
+}
+
+.escape-hatch-banner h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: linear-gradient(to right, #60a5fa, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.escape-hatch-banner p {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 12px rgba(139, 92, 246, 0.1);
+        border-color: rgba(139, 92, 246, 0.35);
+    }
+    50% {
+        box-shadow: 0 0 24px rgba(139, 92, 246, 0.25);
+        border-color: rgba(139, 92, 246, 0.6);
     }
 }

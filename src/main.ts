@@ -111,6 +111,7 @@ function initSkeleton(): void {
     <div class="card resurface-queue">
       <div class="resurface-head">
         <span class="resurface-title">Stale Queue</span>
+        <button class="link" data-act="open-dashboard" title="Open stale queue page" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); padding: 0;">Open Page</button>
       </div>
       <ul class="resurface-list"></ul>
     </div>
@@ -397,6 +398,10 @@ app.addEventListener("click", async (e) => {
   switch (act) {
     case "settings":
       chrome.runtime.openOptionsPage();
+      window.close();
+      break;
+    case "open-dashboard":
+      chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
       window.close();
       break;
     case "escape-tab":
