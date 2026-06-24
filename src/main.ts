@@ -109,6 +109,14 @@ function initSkeleton(): void {
       <p class="hint"></p>
     </div>
 
+    <div class="card resurface-queue">
+      <div class="resurface-head">
+        <span class="resurface-title">Stale Queue</span>
+      </div>
+      <ul class="resurface-list"></ul>
+      <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;"></div>
+    </div>
+
     <div class="card stash">
       <div class="stash-head">
         <span class="stash-title">Stash</span>
@@ -116,14 +124,6 @@ function initSkeleton(): void {
       </div>
       <button class="stash-btn" data-act="stash-current" style="margin-bottom: 12px;"></button>
       <ul class="stash-list"></ul>
-    </div>
-
-    <div class="card resurface-queue">
-      <div class="resurface-head">
-        <span class="resurface-title">Stale Queue</span>
-      </div>
-      <ul class="resurface-list"></ul>
-      <div class="resurface-toggle-container" style="display: none; justify-content: center; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;"></div>
     </div>
   `;
 }
