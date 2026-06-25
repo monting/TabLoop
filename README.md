@@ -6,7 +6,7 @@ TabLoop is a modern browser extension designed to help you conquer tab hoarding.
 
 - **Strict Tab Limits**: Define your absolute maximum number of tabs globally or per-window.
 - **Smart Recycling**: Choose between recycling the *oldest created* tab or the *least recently used* (LRU) tab.
-- **Stash**: Park any open tab in your Stash to instantly free up a slot — it closes but is saved for later. Restore them from the popup on any signed-in device.
+- **Stash**: Park any open tab in your Stash to instantly free up a slot — it closes but is saved for later. Syncs across devices when the "Sync stash" setting is enabled (uses `chrome.storage.sync` under the hood, showing `🟢 Stash` if settings sync is active and `🔴 Local Stash` if stored locally).
 - **Live Tab Counter**: The toolbar popup shows your current tab count against your limit at a glance.
 - **Pinned Tab Protection**: Exclude your important pinned tabs from being touched (and from counting toward the limit).
 - **System-Page Exemption**: Chrome's internal pages (`chrome://…`) and TabLoop's own settings page never count toward your limit and are never recycled — only the new-tab page stays enforced.
@@ -15,6 +15,7 @@ TabLoop is a modern browser extension designed to help you conquer tab hoarding.
 ## Design Notes
 
 - **No "Hijack New Tab Page" feature (removed).** TabLoop deliberately does not override the browser's new-tab page, and it never redirects the page you navigate to. An earlier version shipped a toggle that swapped the new-tab page for a TabLoop dashboard, but Manifest V3 registers `chrome_url_overrides` statically — there is no API to turn the override off at runtime. That made the toggle's "off" state impossible to honor: with the override always active, we could never fall back to the browser's default (blank) new-tab page, so turning the setting on or off had no real effect. The feature (the override, the `hijackNewTab` setting, and the new-tab exemption it implied) was removed entirely rather than ship a control that can't work. The only interface surfaces are the toolbar popup and the settings page. New tabs always show the browser's native new-tab page.
+- **No Identity Permissions Required**: To keep user privacy clean and permissions minimal, TabLoop does not require or declare the `identity` or `identity.email` permissions. Sync status is determined by user preference toggles, rather than tracking your browser profile's active Google account state directly.
 
 ## How to Run Locally for Development
 

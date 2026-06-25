@@ -1,7 +1,7 @@
 import type { Settings } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
-  maxTabs: 100,
+  maxTabs: 30,
   limitScope: 'global',
   limitBehavior: 'focus',
   oldestDefinition: 'lru',

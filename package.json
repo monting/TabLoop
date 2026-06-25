@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:firefox": "TARGET=firefox vite",
+    "dev": "tsc && WATCH=true TARGET=chrome vite build",
+    "dev:firefox": "tsc && WATCH=true TARGET=firefox vite build",
     "typecheck": "tsc --noEmit",
     "build": "npm run build:chrome && npm run build:firefox",
     "build:chrome": "tsc && TARGET=chrome vite build",

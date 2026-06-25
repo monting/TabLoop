@@ -25,6 +25,7 @@ interface PopupState {
   activeTab: ActiveTab | null;
   upcomingTabs: chrome.tabs.Tab[];
   times: TabTimes;
+  syncActive: boolean;
 }
 
 let currentState: PopupState | null = null;
@@ -76,6 +77,7 @@ async function readState(): Promise<PopupState> {
         : null,
     upcomingTabs,
     times,
+    syncActive: settings.syncStash,
   };
 }
 
@@ -111,6 +113,7 @@ function initSkeleton(): void {
     <div class="card resurface-queue">
       <div class="resurface-head">
         <span class="resurface-title">Stale Queue</span>
+        <button class="link" data-act="open-dashboard" title="Open stale queue page" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); padding: 0;">Open Page</button>
       </div>
       <ul class="resurface-list"></ul>
     </div>
@@ -174,7 +177,13 @@ function render(state: PopupState): void {
     : "This page can't be stashed";
 
   const stashTitle = app.querySelector<HTMLSpanElement>(".stash-title")!;
-  stashTitle.textContent = `Stash (${stash.length})`;
+  const titleText = state.syncActive ? "🟢 Stash" : "🔴 Local Stash";
+  stashTitle.textContent = `${titleText} (${stash.length})`;
+  if (state.syncActive) {
+    stashTitle.title = "Cloud sync enabled";
+  } else {
+    stashTitle.title = "Cloud sync disabled";
+  }
 
   const stashClearContainer = app.querySelector<HTMLDivElement>(
     ".stash-clear-container",
@@ -363,13 +372,24 @@ function renderUpcomingItem(
   const nativeTime = tab.lastAccessed;
   const resolvedTime = nativeTime ?? manualTime ?? 0;
 
-  const timeBadge = document.createElement("span");
+  const timeBadge = document.createElement("button");
+  timeBadge.type = "button";
   timeBadge.className = "time-badge";
-  timeBadge.textContent = formatElapsed(resolvedTime);
-  timeBadge.title =
-    resolvedTime > 0
-      ? new Date(resolvedTime).toLocaleString()
-      : "Never accessed";
+  timeBadge.title = "Stash and close tab";
+  timeBadge.dataset.act = "stash-tab";
+  if (tab.id != null) {
+    timeBadge.dataset.id = tab.id.toString();
+  }
+
+  const timeText = document.createElement("span");
+  timeText.className = "time-text";
+  timeText.textContent = formatElapsed(resolvedTime);
+
+  const stashText = document.createElement("span");
+  stashText.className = "stash-text";
+  stashText.textContent = "Stash";
+
+  timeBadge.append(timeText, stashText);
 
   const closeBtn = document.createElement("button");
   closeBtn.className = "remove";
@@ -397,6 +417,10 @@ app.addEventListener("click", async (e) => {
   switch (act) {
     case "settings":
       chrome.runtime.openOptionsPage();
+      window.close();
+      break;
+    case "open-dashboard":
+      chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
       window.close();
       break;
     case "escape-tab":
@@ -451,6 +475,23 @@ app.addEventListener("click", async (e) => {
         const tabId = parseInt(tabIdStr, 10);
         await chrome.tabs.remove(tabId);
         await refresh();
+      }
+      break;
+    }
+    case "stash-tab": {
+      const tabIdStr = target.dataset.id;
+      if (tabIdStr) {
+        const tabId = parseInt(tabIdStr, 10);
+        try {
+          const tab = await chrome.tabs.get(tabId);
+          if (tab && tab.url && isStashableUrl(tab.url)) {
+            await addToStash(tab.url, tab.title, tab.favIconUrl);
+            await chrome.tabs.remove(tabId);
+            await refresh();
+          }
+        } catch (err) {
+          console.error("Failed to stash tab", err);
+        }
       }
       break;
     }
