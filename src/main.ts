@@ -7,7 +7,7 @@ import {
   sortTabsForResurfacing,
 } from "./tabs";
 import { loadSettings } from "./settings";
-import { addToStash, clearStash, getStash, removeFromStash } from "./stash";
+import { addToStash, clearStash, getStash, removeFromStash, isSyncingActive } from "./stash";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -25,6 +25,7 @@ interface PopupState {
   activeTab: ActiveTab | null;
   upcomingTabs: chrome.tabs.Tab[];
   times: TabTimes;
+  syncActive: boolean;
 }
 
 let currentState: PopupState | null = null;
@@ -76,6 +77,7 @@ async function readState(): Promise<PopupState> {
         : null,
     upcomingTabs,
     times,
+    syncActive: await isSyncingActive(settings),
   };
 }
 
@@ -175,7 +177,13 @@ function render(state: PopupState): void {
     : "This page can't be stashed";
 
   const stashTitle = app.querySelector<HTMLSpanElement>(".stash-title")!;
-  stashTitle.textContent = `Stash (${stash.length})`;
+  const titleText = state.syncActive ? "🟢 Stash" : "🔴 Local Stash";
+  stashTitle.textContent = `${titleText} (${stash.length})`;
+  if (state.syncActive) {
+    stashTitle.title = "Cloud sync enabled";
+  } else {
+    stashTitle.title = "Cloud sync disabled";
+  }
 
   const stashClearContainer = app.querySelector<HTMLDivElement>(
     ".stash-clear-container",

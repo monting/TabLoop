@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TabLoop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Limit your open tabs and force yourself to deal with the backlog.",
   "icons": {
     "16": "icon-16.png",
@@ -26,7 +26,9 @@
   "permissions": [
     "storage",
     "tabs",
-    "{{chrome}}.favicon"
+    "{{chrome}}.favicon",
+    "identity",
+    "{{chrome}}.identity.email"
   ],
   "{{chrome}}.web_accessible_resources": [
     {

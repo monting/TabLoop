@@ -3,7 +3,7 @@ import type { Settings, StashItem } from './types';
 import type { TabInfo, TabTimes } from './tabs';
 import { countRelevantTabs, isStashableUrl, sortTabsForResurfacing } from './tabs';
 import { loadSettings } from './settings';
-import { addToStash, clearStash, getStash, removeFromStash } from './stash';
+import { addToStash, clearStash, getStash, removeFromStash, isSyncingActive } from './stash';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -20,6 +20,7 @@ interface DashboardState {
   activeTab: ActiveTab | null;
   upcomingTabs: chrome.tabs.Tab[];
   times: TabTimes;
+  syncActive: boolean;
 }
 
 let currentState: DashboardState | null = null;
@@ -67,6 +68,7 @@ async function readState(): Promise<DashboardState> {
     activeTab: active?.id != null ? { id: active.id, url: active.url, title: active.title } : null,
     upcomingTabs,
     times,
+    syncActive: await isSyncingActive(settings),
   };
 }
 
@@ -302,7 +304,13 @@ function render(state: DashboardState): void {
   }
 
   const stashTitle = app.querySelector<HTMLSpanElement>('.stash-title')!;
-  stashTitle.innerHTML = `Stash${stash.length ? ` <span class="pill">${stash.length}</span>` : ''}`;
+  const titleText = state.syncActive ? '🟢 Stash' : '🔴 Local Stash';
+  stashTitle.innerHTML = `${titleText}${stash.length ? ` <span class="pill">${stash.length}</span>` : ''}`;
+  if (state.syncActive) {
+    stashTitle.title = 'Cloud sync enabled';
+  } else {
+    stashTitle.title = 'Cloud sync disabled';
+  }
 
   const stashClearContainer = app.querySelector<HTMLDivElement>('.stash-clear-container')!;
   stashClearContainer.innerHTML = stash.length ? '<button class="link" data-act="clear">Clear all</button>' : '';
