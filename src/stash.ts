@@ -92,18 +92,3 @@ export function removeFromStash(url: string): Promise<void> {
 export async function clearStash(): Promise<void> {
   await setStash([]);
 }
-
-export async function isSyncingActive(settings: Settings): Promise<boolean> {
-  if (!settings.syncStash) {
-    return false;
-  }
-  try {
-    if (typeof chrome !== 'undefined' && chrome.identity && chrome.identity.getProfileUserInfo) {
-      const userInfo = await chrome.identity.getProfileUserInfo({ accountStatus: 'SYNC' });
-      return !!(userInfo && (userInfo.email || userInfo.id));
-    }
-  } catch (err) {
-    // Fall back to false if the identity API is not supported/throws
-  }
-  return false;
-}

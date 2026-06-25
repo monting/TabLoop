@@ -6,7 +6,7 @@ TabLoop is a modern browser extension designed to help you conquer tab hoarding.
 
 - **Strict Tab Limits**: Define your absolute maximum number of tabs globally or per-window.
 - **Smart Recycling**: Choose between recycling the *oldest created* tab or the *least recently used* (LRU) tab.
-- **Stash**: Park any open tab in your Stash to instantly free up a slot — it closes but is saved for later. Restore them from the popup on any signed-in device.
+- **Stash**: Park any open tab in your Stash to instantly free up a slot — it closes but is saved for later. Syncs across devices when the "Sync stash" setting is enabled (uses `chrome.storage.sync` under the hood, showing `🟢 Stash` if settings sync is active and `🔴 Local Stash` if stored locally).
 - **Live Tab Counter**: The toolbar popup shows your current tab count against your limit at a glance.
 - **Pinned Tab Protection**: Exclude your important pinned tabs from being touched (and from counting toward the limit).
 - **System-Page Exemption**: Chrome's internal pages (`chrome://…`) and TabLoop's own settings page never count toward your limit and are never recycled — only the new-tab page stays enforced.
@@ -15,6 +15,7 @@ TabLoop is a modern browser extension designed to help you conquer tab hoarding.
 ## Design Notes
 
 - **No new-tab page override.** TabLoop deliberately does not replace or override the browser's new-tab page, and it never redirects the page you navigate to. The only interface surfaces are the toolbar popup and the settings page. New tabs always show the browser's native new-tab page.
+- **No Identity Permissions Required**: To keep user privacy clean and permissions minimal, TabLoop does not require or declare the `identity` or `identity.email` permissions. Sync status is determined by user preference toggles, rather than tracking your browser profile's active Google account state directly.
 
 ## How to Run Locally for Development
 

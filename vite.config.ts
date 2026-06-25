@@ -17,7 +17,7 @@ export default defineConfig({
     // other and can be zipped/loaded independently.
     outDir: `dist/${target}`,
     minify: false,
-    watch: {},
+    watch: process.env.WATCH ? {} : undefined,
   },
 });
 

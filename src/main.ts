@@ -7,7 +7,7 @@ import {
   sortTabsForResurfacing,
 } from "./tabs";
 import { loadSettings } from "./settings";
-import { addToStash, clearStash, getStash, removeFromStash, isSyncingActive } from "./stash";
+import { addToStash, clearStash, getStash, removeFromStash } from "./stash";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -77,7 +77,7 @@ async function readState(): Promise<PopupState> {
         : null,
     upcomingTabs,
     times,
-    syncActive: await isSyncingActive(settings),
+    syncActive: settings.syncStash,
   };
 }
 

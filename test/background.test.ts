@@ -1,6 +1,6 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { getStash, setStash, STASH_KEY, isSyncingActive } from "../src/stash.ts";
+import { getStash, setStash, STASH_KEY } from "../src/stash.ts";
 
 // Define chrome mock listeners and storage
 const chromeListeners = {
@@ -1186,96 +1186,4 @@ test("escape-hatch-tab opens an ordinary new tab and does not substitute an exte
 
   // The escape hatch must open a blank native new tab — never a custom extension page.
   assert.deepEqual(createOptions, {}, "Escape hatch should open a blank new tab");
-});
-
-test("isSyncingActive returns false when syncStash settings is false", async () => {
-  const settings = {
-    maxTabs: 5,
-    limitScope: "global" as const,
-    limitBehavior: "move" as const,
-    oldestDefinition: "lru" as const,
-    excludePinned: true,
-    enableStash: true,
-    syncStash: false,
-  };
-  const active = await isSyncingActive(settings);
-  assert.equal(active, false);
-});
-
-test("isSyncingActive returns true when syncStash is true and chrome.identity.getProfileUserInfo returns active user info", async () => {
-  const settings = {
-    maxTabs: 5,
-    limitScope: "global" as const,
-    limitBehavior: "move" as const,
-    oldestDefinition: "lru" as const,
-    excludePinned: true,
-    enableStash: true,
-    syncStash: true,
-  };
-
-  // Mock chrome.identity
-  const originalIdentity = global.chrome.identity;
-  global.chrome.identity = {
-    getProfileUserInfo: async (options?: any) => {
-      assert.deepEqual(options, { accountStatus: "SYNC" });
-      return { email: "user@example.com", id: "12345" };
-    }
-  } as any;
-
-  try {
-    const active = await isSyncingActive(settings);
-    assert.equal(active, true);
-  } finally {
-    global.chrome.identity = originalIdentity;
-  }
-});
-
-test("isSyncingActive returns false when syncStash is true but chrome.identity.getProfileUserInfo returns empty strings", async () => {
-  const settings = {
-    maxTabs: 5,
-    limitScope: "global" as const,
-    limitBehavior: "move" as const,
-    oldestDefinition: "lru" as const,
-    excludePinned: true,
-    enableStash: true,
-    syncStash: true,
-  };
-
-  // Mock chrome.identity
-  const originalIdentity = global.chrome.identity;
-  global.chrome.identity = {
-    getProfileUserInfo: async (options?: any) => {
-      return { email: "", id: "" };
-    }
-  } as any;
-
-  try {
-    const active = await isSyncingActive(settings);
-    assert.equal(active, false);
-  } finally {
-    global.chrome.identity = originalIdentity;
-  }
-});
-
-test("isSyncingActive handles errors/missing identity API gracefully by returning false", async () => {
-  const settings = {
-    maxTabs: 5,
-    limitScope: "global" as const,
-    limitBehavior: "move" as const,
-    oldestDefinition: "lru" as const,
-    excludePinned: true,
-    enableStash: true,
-    syncStash: true,
-  };
-
-  // Mock chrome.identity to be missing/throw
-  const originalIdentity = global.chrome.identity;
-  global.chrome.identity = undefined as any;
-
-  try {
-    const active = await isSyncingActive(settings);
-    assert.equal(active, false);
-  } finally {
-    global.chrome.identity = originalIdentity;
-  }
 });

@@ -3,7 +3,7 @@ import type { Settings, StashItem } from './types';
 import type { TabInfo, TabTimes } from './tabs';
 import { countRelevantTabs, isStashableUrl, sortTabsForResurfacing } from './tabs';
 import { loadSettings } from './settings';
-import { addToStash, clearStash, getStash, removeFromStash, isSyncingActive } from './stash';
+import { addToStash, clearStash, getStash, removeFromStash } from './stash';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -68,7 +68,7 @@ async function readState(): Promise<DashboardState> {
     activeTab: active?.id != null ? { id: active.id, url: active.url, title: active.title } : null,
     upcomingTabs,
     times,
-    syncActive: await isSyncingActive(settings),
+    syncActive: settings.syncStash,
   };
 }
 
