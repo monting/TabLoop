@@ -700,3 +700,63 @@ body.dashboard-page .stash-list {
         border-color: rgba(139, 92, 246, 0.6);
     }
 }
+
+/* Window Grouping styles */
+.window-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.window-group:last-child {
+    margin-bottom: 0;
+}
+
+.window-tab-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 12px;
+    border-left: 2px solid rgba(59, 130, 246, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.window-tab-list.ungrouped {
+    padding: 0;
+    border-left: none;
+}
+
+/* Stale Queue View Toggle */
+.stale-view-toggle {
+    display: inline-flex;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 4px;
+}
+
+.stale-view-toggle .toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.stale-view-toggle .toggle-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.stale-view-toggle .toggle-btn.active {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}

@@ -22,10 +22,12 @@ interface DashboardState {
   upcomingTabs: chrome.tabs.Tab[];
   times: TabTimes;
   syncActive: boolean;
+  currentWindowId: number | null;
 }
 
 let currentState: DashboardState | null = null;
 let escapeHatchClicked = false;
+let activeView: 'grouped' | 'ungrouped' = (localStorage.getItem('stale_view_pref') as 'grouped' | 'ungrouped') || 'grouped';
 
 const FALLBACK_FAVICON =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
@@ -43,11 +45,12 @@ function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
 
 async function readState(): Promise<DashboardState> {
   const settings = await loadSettings();
-  const [rawTabs, [active], sessionData, stash] = await Promise.all([
+  const [rawTabs, [active], sessionData, stash, currentWindow] = await Promise.all([
     chrome.tabs.query(settings.limitScope === 'per-window' ? { currentWindow: true } : {}),
     chrome.tabs.query({ active: true, currentWindow: true }),
     chrome.storage.session.get(['creation', 'resurfaced', 'lastAccessed']),
     getStash(),
+    chrome.windows.getCurrent().catch(() => null),
   ]);
 
   const tabs = rawTabs.map(toTabInfo).filter((t): t is TabInfo => t !== null);
@@ -70,6 +73,7 @@ async function readState(): Promise<DashboardState> {
     upcomingTabs,
     times,
     syncActive: settings.syncStash,
+    currentWindowId: currentWindow?.id ?? null,
   };
 }
 
@@ -198,8 +202,8 @@ function renderUpcomingItem(tab: chrome.tabs.Tab, times: TabTimes): HTMLLIElemen
   return li;
 }
 
-function appendEmptyItem(list: HTMLUListElement, text: string): void {
-  const empty = document.createElement('li');
+function appendEmptyItem(list: HTMLElement, text: string): void {
+  const empty = document.createElement(list.tagName.toLowerCase() === 'ul' ? 'li' : 'div');
   empty.className = 'empty';
   empty.textContent = text;
   list.append(empty);
@@ -226,8 +230,12 @@ function initSkeleton(): void {
         <div class="card resurface-queue">
           <div class="resurface-head">
             <span class="resurface-title">Stale Queue</span>
+            <div class="stale-view-toggle">
+              <button class="toggle-btn" data-act="set-view" data-view="grouped">Grouped by Windows</button>
+              <button class="toggle-btn" data-act="set-view" data-view="ungrouped">Sorted by Staleness</button>
+            </div>
           </div>
-          <ul class="resurface-list"></ul>
+          <div class="resurface-list"></div>
         </div>
       </div>
 
@@ -311,13 +319,69 @@ function render(state: DashboardState): void {
   const resurfaceTitle = app.querySelector<HTMLSpanElement>('.resurface-title')!;
   resurfaceTitle.textContent = 'Stale Queue';
 
-  const resurfaceList = app.querySelector<HTMLUListElement>('.resurface-list')!;
+  const toggleGrouped = app.querySelector<HTMLButtonElement>('[data-act="set-view"][data-view="grouped"]')!;
+  const toggleUngrouped = app.querySelector<HTMLButtonElement>('[data-act="set-view"][data-view="ungrouped"]')!;
+
+  if (activeView === 'ungrouped') {
+    toggleGrouped.classList.remove('active');
+    toggleUngrouped.classList.add('active');
+  } else {
+    toggleGrouped.classList.add('active');
+    toggleUngrouped.classList.remove('active');
+  }
+
+  const resurfaceList = app.querySelector<HTMLDivElement>('.resurface-list')!;
   resurfaceList.innerHTML = '';
   if (upcomingTabs.length === 0) {
     appendEmptyItem(resurfaceList, 'No stale tabs in queue.');
-  } else {
+  } else if (activeView === 'ungrouped') {
+    const ul = document.createElement('ul');
+    ul.className = 'window-tab-list ungrouped';
     upcomingTabs.forEach((tab) => {
-      resurfaceList.append(renderUpcomingItem(tab, times));
+      ul.append(renderUpcomingItem(tab, times));
+    });
+    resurfaceList.append(ul);
+  } else {
+    interface WindowGroup {
+      windowId: number;
+      tabs: chrome.tabs.Tab[];
+    }
+    const groups: WindowGroup[] = [];
+    const groupMap = new Map<number, WindowGroup>();
+
+    upcomingTabs.forEach((tab) => {
+      const wId = tab.windowId;
+      let group = groupMap.get(wId);
+      if (!group) {
+        group = { windowId: wId, tabs: [] };
+        groupMap.set(wId, group);
+        groups.push(group);
+      }
+      group.tabs.push(tab);
+    });
+
+    const currentWindowId = state.currentWindowId;
+    if (currentWindowId != null) {
+      groups.sort((a, b) => {
+        if (a.windowId === currentWindowId) return -1;
+        if (b.windowId === currentWindowId) return 1;
+        return 0;
+      });
+    }
+
+    groups.forEach((group) => {
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'window-group';
+
+      const ul = document.createElement('ul');
+      ul.className = 'window-tab-list';
+
+      group.tabs.forEach((tab) => {
+        ul.append(renderUpcomingItem(tab, times));
+      });
+
+      groupDiv.append(ul);
+      resurfaceList.append(groupDiv);
     });
   }
 
@@ -388,6 +452,16 @@ app.addEventListener('click', async (e) => {
   const { act, url } = target.dataset;
 
   switch (act) {
+    case 'set-view': {
+      const view = target.dataset.view as 'grouped' | 'ungrouped';
+      if (view) {
+        activeView = view;
+        localStorage.setItem('stale_view_pref', view);
+        await refresh();
+      }
+      break;
+    }
+
     case 'settings':
       chrome.runtime.openOptionsPage();
       break;
