@@ -231,8 +231,8 @@ function initSkeleton(): void {
           <div class="resurface-head">
             <span class="resurface-title">Stale Queue</span>
             <div class="stale-view-toggle">
-              <button class="toggle-btn" data-act="set-view" data-view="grouped">Grouped by Windows</button>
               <button class="toggle-btn" data-act="set-view" data-view="ungrouped">Sorted by Staleness</button>
+              <button class="toggle-btn" data-act="set-view" data-view="grouped">Grouped by Windows</button>
             </div>
           </div>
           <div class="resurface-list"></div>
