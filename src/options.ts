@@ -145,7 +145,7 @@ async function updateSuggestions(
     candidates.forEach(d => {
       const pill = document.createElement('span');
       pill.className = 'pill';
-      
+
       const img = document.createElement('img');
       img.className = 'domain-favicon';
       img.src = getFavicon(d);
@@ -367,7 +367,7 @@ async function saveCurrentSettings() {
       <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
   `;
-  statusText.textContent = 'Settings saved automatically!';
+  statusText.textContent = 'Settings saved!';
 
   hideTimer = setTimeout(() => {
     statusContainer.classList.remove('visible');
