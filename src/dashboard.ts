@@ -222,7 +222,7 @@ function initSkeleton(): void {
     </div>
 
     <div class="dashboard-grid">
-      <div class="main-column">
+      <div class="stale-column">
         <div class="card resurface-queue">
           <div class="resurface-head">
             <span class="resurface-title">Stale Queue</span>
@@ -231,7 +231,7 @@ function initSkeleton(): void {
         </div>
       </div>
 
-      <div class="sidebar-column">
+      <div class="stash-column">
         <div class="card meter">
           <div class="count"></div>
           <div class="bar"><div class="bar-fill"></div></div>
