@@ -115,7 +115,7 @@ function initSkeleton(): void {
       <div class="resurface-head">
         <span class="resurface-title">Stale Queue</span>
         <button class="link" data-act="open-dashboard" title="Open stale queue page" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); padding: 0; display: flex; align-items: center; gap: 4px;">
-          <span>Open in tab</span>
+          <span>Dashboard</span>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
             <polyline points="15 3 21 3 21 9"></polyline>
