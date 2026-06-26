@@ -7,7 +7,7 @@ import {
   sortTabsForResurfacing,
 } from "./tabs";
 import { loadSettings } from "./settings";
-import { addToStash, clearStash, getStash, removeFromStash } from "./stash";
+import { addToStash, getStash, removeFromStash } from "./stash";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -113,7 +113,7 @@ function initSkeleton(): void {
     <div class="card resurface-queue">
       <div class="resurface-head">
         <span class="resurface-title">Stale Queue</span>
-        <button class="link" data-act="open-dashboard" title="Open stale queue page" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); padding: 0;">Open Page</button>
+        <button class="link" data-act="open-dashboard" title="Open stale queue page" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); padding: 0;">Open in tab</button>
       </div>
       <ul class="resurface-list"></ul>
     </div>
@@ -122,7 +122,6 @@ function initSkeleton(): void {
       <div class="stash-head">
         <span class="stash-title">Stash</span>
         <button class="stash-btn" data-act="stash-current"></button>
-        <div class="stash-clear-container"></div>
       </div>
       <ul class="stash-list"></ul>
     </div>
@@ -185,18 +184,7 @@ function render(state: PopupState): void {
     stashTitle.title = "Cloud sync disabled";
   }
 
-  const stashClearContainer = app.querySelector<HTMLDivElement>(
-    ".stash-clear-container",
-  )!;
-  if (stash.length) {
-    const clearBtn = document.createElement("button");
-    clearBtn.className = "link";
-    clearBtn.dataset.act = "clear";
-    clearBtn.textContent = "Clear all";
-    stashClearContainer.replaceChildren(clearBtn);
-  } else {
-    stashClearContainer.replaceChildren();
-  }
+
 
   const escapeHatchActive = escapeHatchClicked;
 
@@ -212,7 +200,7 @@ function render(state: PopupState): void {
 
   const resurfaceTitle =
     app.querySelector<HTMLSpanElement>(".resurface-title")!;
-  resurfaceTitle.textContent = `Stale Queue (${upcomingTabs.length})`;
+  resurfaceTitle.textContent = "Stale Queue";
 
   const resurfaceList = app.querySelector<HTMLUListElement>(".resurface-list")!;
   resurfaceList.replaceChildren();
@@ -442,10 +430,7 @@ app.addEventListener("click", async (e) => {
       }
       break;
     }
-    case "clear":
-      await clearStash();
-      await refresh();
-      break;
+
     case "remove":
       if (url) await removeFromStash(url);
       await refresh();

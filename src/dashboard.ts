@@ -3,7 +3,7 @@ import type { Settings, StashItem } from './types';
 import type { TabInfo, TabTimes } from './tabs';
 import { countRelevantTabs, isStashableUrl, sortTabsForResurfacing } from './tabs';
 import { loadSettings } from './settings';
-import { addToStash, clearStash, getStash, removeFromStash } from './stash';
+import { addToStash, getStash, removeFromStash } from './stash';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -210,6 +210,7 @@ function initSkeleton(): void {
     <div class="header">
       <h1>TabLoop Dashboard</h1>
       <div style="display: flex; gap: 12px; align-items: center;">
+        <div class="escape-container"></div>
         <button class="link settings" data-act="settings" title="Settings" aria-label="Settings" style="padding-left: 0; display: flex; align-items: center; justify-content: center;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease-out;">
             <circle cx="12" cy="12" r="3"></circle>
@@ -239,14 +240,8 @@ function initSkeleton(): void {
         <div class="card stash">
           <div class="stash-head">
             <span class="stash-title">Stash</span>
-            <div class="stash-clear-container"></div>
           </div>
           <ul class="stash-list"></ul>
-        </div>
-
-        <div class="card escape-hatch-card">
-          <span class="section-title">Escape Hatch</span>
-          <div class="escape-container"></div>
         </div>
       </div>
     </div>
@@ -312,11 +307,8 @@ function render(state: DashboardState): void {
     stashTitle.title = 'Cloud sync disabled';
   }
 
-  const stashClearContainer = app.querySelector<HTMLDivElement>('.stash-clear-container')!;
-  stashClearContainer.innerHTML = stash.length ? '<button class="link" data-act="clear">Clear all</button>' : '';
-
   const resurfaceTitle = app.querySelector<HTMLSpanElement>('.resurface-title')!;
-  resurfaceTitle.textContent = `Stale Queue (${upcomingTabs.length})`;
+  resurfaceTitle.textContent = 'Stale Queue';
 
   const resurfaceList = app.querySelector<HTMLUListElement>('.resurface-list')!;
   resurfaceList.innerHTML = '';
@@ -408,11 +400,6 @@ app.addEventListener('click', async (e) => {
   switch (act) {
     case 'settings':
       chrome.runtime.openOptionsPage();
-      break;
-
-    case 'clear':
-      await clearStash();
-      await refresh();
       break;
 
     case 'remove':
