@@ -4,6 +4,7 @@ import type { TabInfo, TabTimes } from './tabs';
 import { countRelevantTabs, isStashableUrl, sortTabsForResurfacing } from './tabs';
 import { loadSettings } from './settings';
 import { addToStash, getStash, removeFromStash } from './stash';
+import { renderEscapeHatch } from './escapeHatch';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -334,18 +335,7 @@ function render(state: DashboardState): void {
   }
 
   const escapeContainer = app.querySelector<HTMLDivElement>('.escape-container')!;
-  if (escapeHatchClicked) {
-    escapeContainer.innerHTML = `
-      <div style="display: flex; gap: 6px;">
-        <button class="escape-btn" data-act="escape-tab" title="Open a new tab outside the limit"${atLimit ? '' : ' disabled'}>+ Tab</button>
-        <button class="escape-btn" data-act="escape-window" title="Open a new window outside the limit"${atLimit ? '' : ' disabled'}>+ Window</button>
-      </div>
-    `;
-  } else {
-    escapeContainer.innerHTML = `
-      <button class="link" data-act="click-escape-hatch" title="Click to show escape actions" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); cursor: pointer; padding: 0;">Escape Hatch</button>
-    `;
-  }
+  renderEscapeHatch(escapeContainer, escapeHatchActive, atLimit);
 }
 
 function showToast(message: string): void {

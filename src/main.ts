@@ -8,6 +8,7 @@ import {
 } from "./tabs";
 import { loadSettings } from "./settings";
 import { addToStash, getStash, removeFromStash } from "./stash";
+import { renderEscapeHatch } from "./escapeHatch";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -113,7 +114,14 @@ function initSkeleton(): void {
     <div class="card resurface-queue">
       <div class="resurface-head">
         <span class="resurface-title">Stale Queue</span>
-        <button class="link" data-act="open-dashboard" title="Open stale queue page" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); padding: 0;">Open in tab</button>
+        <button class="link" data-act="open-dashboard" title="Open stale queue page" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); padding: 0; display: flex; align-items: center; gap: 4px;">
+          <span>Open in tab</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </button>
       </div>
       <ul class="resurface-list"></ul>
     </div>
@@ -215,37 +223,7 @@ function render(state: PopupState): void {
 
   const escapeContainer =
     app.querySelector<HTMLDivElement>(".escape-container")!;
-  if (escapeHatchClicked) {
-    const row = document.createElement("div");
-    row.style.display = "flex";
-    row.style.gap = "6px";
-
-    const tabBtn = document.createElement("button");
-    tabBtn.className = "escape-btn";
-    tabBtn.dataset.act = "escape-tab";
-    tabBtn.title = atLimit ? "Open a new tab outside the limit" : "Open a new tab";
-    tabBtn.textContent = "+ Tab";
-
-    const windowBtn = document.createElement("button");
-    windowBtn.className = "escape-btn";
-    windowBtn.dataset.act = "escape-window";
-    windowBtn.title = atLimit
-      ? "Open a new window outside the limit"
-      : "Open a new window";
-    windowBtn.textContent = "+ Window";
-
-    row.append(tabBtn, windowBtn);
-    escapeContainer.replaceChildren(row);
-  } else {
-    const escapeLink = document.createElement("button");
-    escapeLink.className = "link";
-    escapeLink.dataset.act = "click-escape-hatch";
-    escapeLink.title = "Click to show escape actions";
-    escapeLink.style.cssText =
-      "font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); cursor: pointer; padding: 0;";
-    escapeLink.textContent = "Escape Hatch";
-    escapeContainer.replaceChildren(escapeLink);
-  }
+  renderEscapeHatch(escapeContainer, escapeHatchActive, atLimit);
 }
 
 function spanWith(className: string, text: string): HTMLSpanElement {
