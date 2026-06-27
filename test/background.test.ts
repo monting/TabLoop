@@ -1187,3 +1187,25 @@ test("escape-hatch-tab opens an ordinary new tab and does not substitute an exte
   // The escape hatch must open a blank native new tab — never a custom extension page.
   assert.deepEqual(createOptions, {}, "Escape hatch should open a blank new tab");
 });
+
+test("onMessage invokes sendResponse for escape-hatch actions", async () => {
+  const onMessage = chromeListeners.onMessage[0];
+  
+  let tabResponse: any = null;
+  onMessage("escape-hatch-tab", {}, (res: any) => {
+    tabResponse = res;
+  });
+  assert.deepEqual(tabResponse, { success: true });
+
+  let windowResponse: any = null;
+  onMessage("escape-hatch-window", {}, (res: any) => {
+    windowResponse = res;
+  });
+  assert.deepEqual(windowResponse, { success: true });
+
+  let objectResponse: any = null;
+  onMessage({ type: "escape-hatch-tab", url: "https://example.com" }, {}, (res: any) => {
+    objectResponse = res;
+  });
+  assert.deepEqual(objectResponse, { success: true });
+});

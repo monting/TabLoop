@@ -518,12 +518,12 @@ app.addEventListener('click', async (e) => {
 
     case 'escape-tab':
       if ((target as HTMLButtonElement).disabled) break;
-      chrome.runtime.sendMessage('escape-hatch-tab');
+      await chrome.runtime.sendMessage('escape-hatch-tab');
       break;
 
     case 'escape-window':
       if ((target as HTMLButtonElement).disabled) break;
-      chrome.runtime.sendMessage('escape-hatch-window');
+      await chrome.runtime.sendMessage('escape-hatch-window');
       break;
 
     case 'click-escape-hatch':

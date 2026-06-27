@@ -382,21 +382,21 @@ app.addEventListener("click", async (e) => {
 
   switch (act) {
     case "settings":
-      chrome.runtime.openOptionsPage();
+      await chrome.runtime.openOptionsPage();
       window.close();
       break;
     case "open-expanded":
-      chrome.tabs.create({ url: chrome.runtime.getURL("expanded.html") });
+      await chrome.tabs.create({ url: chrome.runtime.getURL("expanded.html") });
       window.close();
       break;
     case "escape-tab":
       if ((target as HTMLButtonElement).disabled) break;
-      chrome.runtime.sendMessage("escape-hatch-tab");
+      await chrome.runtime.sendMessage("escape-hatch-tab");
       window.close();
       break;
     case "escape-window":
       if ((target as HTMLButtonElement).disabled) break;
-      chrome.runtime.sendMessage("escape-hatch-window");
+      await chrome.runtime.sendMessage("escape-hatch-window");
       window.close();
       break;
     case "stash-current": {

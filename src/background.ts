@@ -91,16 +91,19 @@ chrome.tabs.onCreated.addListener((tab) => {
     .catch((err) => console.error("TabLoop:", err));
 });
 
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // The escape hatch opens an ordinary new tab/window that bypasses the limit once,
   // landing on the browser's native new-tab page — TabLoop never substitutes its own.
   if (message === 'escape-hatch' || message === 'escape-hatch-tab') {
     noteEscape(chrome.tabs.create({}).then((t) => t.id));
+    sendResponse?.({ success: true });
   } else if (message === 'escape-hatch-window') {
     noteEscape(chrome.windows.create({}).then((w) => w?.tabs?.[0]?.id));
+    sendResponse?.({ success: true });
   } else if (typeof message === 'object' && message !== null) {
     if (message.type === 'escape-hatch-tab') {
       noteEscape(chrome.tabs.create({ url: message.url }).then((t) => t.id));
+      sendResponse?.({ success: true });
     }
   }
 });
