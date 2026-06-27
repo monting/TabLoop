@@ -88,13 +88,19 @@ test('exempt tabs do not count toward the limit', () => {
     tab(1),
     tab(2, { url: 'chrome://settings/' }),
     tab(3, { url: 'chrome-extension://abc/src/options.html' }),
+    tab(4, { url: 'chrome-extension://abc/expanded.html' }),
   ];
   assert.equal(countRelevantTabs(tabs, baseSettings), 1);
 });
 
 test('exempt tabs never push the count over the limit', () => {
   const s = { ...baseSettings, maxTabs: 2 };
-  const tabs = [tab(1), tab(2), tab(3, { url: 'chrome://extensions/' })];
+  const tabs = [
+    tab(1),
+    tab(2),
+    tab(3, { url: 'chrome://extensions/' }),
+    tab(4, { url: 'chrome-extension://abc/expanded.html' }),
+  ];
   assert.equal(isOverLimit(tabs, s), false);
 });
 
@@ -139,6 +145,12 @@ test('selectOldestTab never returns a pinned tab when excludePinned is set', () 
 
 test('selectOldestTab never returns the options page', () => {
   const tabs = [tab(1, { url: 'chrome-extension://abc/src/options.html' }), tab(2), tab(3)];
+  const oldest = selectOldestTab(tabs, 3, times({ 1: 1, 2: 100, 3: 200 }), baseSettings);
+  assert.equal(oldest?.id, 2);
+});
+
+test('selectOldestTab never returns the expanded page', () => {
+  const tabs = [tab(1, { url: 'chrome-extension://abc/expanded.html' }), tab(2), tab(3)];
   const oldest = selectOldestTab(tabs, 3, times({ 1: 1, 2: 100, 3: 200 }), baseSettings);
   assert.equal(oldest?.id, 2);
 });
