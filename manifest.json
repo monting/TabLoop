@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TabLoop",
   "version": "1.2.0",
-  "description": "Limit your open tabs and force yourself to deal with the backlog.",
+  "description": "Limit your open tabs and close the tab loop.",
   "icons": {
     "16": "icon-16.png",
     "48": "icon-48.png",
