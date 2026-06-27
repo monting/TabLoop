@@ -2,6 +2,9 @@
 
 TabLoop is a modern browser extension designed to help you conquer tab hoarding. By setting a customizable limit on your open tabs, TabLoop forces you to confront your pile. When you're at your limit and open a new tab, the extension closes the empty new tab and surfaces your oldest tab to be dealt with instead. To deliberately set a tab aside for later, stash it yourself from the toolbar popup — it closes, frees a slot, and can be restored anytime. All of TabLoop's interface lives in that popup and the settings page.
 
+https://chromewebstore.google.com/detail/tabloop/gjoohkiceinbdgbnbnfjhlaffjlebkik
+
+
 ## Features
 
 - **Strict Tab Limits**: Define your absolute maximum number of tabs globally or per-window.
