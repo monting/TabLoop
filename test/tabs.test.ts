@@ -67,18 +67,18 @@ test('pinned tabs do not push the count over the limit when excluded', () => {
 
 
 
-test('isExemptUrl exempts the settings page, dashboard, and chrome:// pages, but not the new-tab page', () => {
+test('isExemptUrl exempts the settings page, expanded, and chrome:// pages, but not the new-tab page', () => {
   assert.equal(isExemptUrl('chrome-extension://abc/src/options.html'), true);
-  assert.equal(isExemptUrl('chrome-extension://abc/dashboard.html'), true);
-  assert.equal(isExemptUrl('moz-extension://abc/dashboard.html'), true);
+  assert.equal(isExemptUrl('chrome-extension://abc/expanded.html'), true);
+  assert.equal(isExemptUrl('moz-extension://abc/expanded.html'), true);
   assert.equal(isExemptUrl('chrome://settings/'), true);
   assert.equal(isExemptUrl('chrome://extensions/'), true);
   assert.equal(isExemptUrl('chrome://newtab/'), false);
   assert.equal(isExemptUrl('chrome://new-tab-page/'), false);
   assert.equal(isExemptUrl('https://example.com'), false);
-  // A web page whose path merely contains "options.html" or "dashboard.html" must NOT be exempted.
+  // A web page whose path merely contains "options.html" or "expanded.html" must NOT be exempted.
   assert.equal(isExemptUrl('https://example.com/options.html'), false);
-  assert.equal(isExemptUrl('https://example.com/dashboard.html'), false);
+  assert.equal(isExemptUrl('https://example.com/expanded.html'), false);
   assert.equal(isExemptUrl('about:blank'), false);
   assert.equal(isExemptUrl(undefined), false);
 });

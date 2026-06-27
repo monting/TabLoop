@@ -29,7 +29,7 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-body:not(.dashboard-page) {
+body:not(.expanded-page) {
     width: 450px;
     min-height: 530px;
     overflow: hidden;
@@ -456,7 +456,7 @@ body:not(.dashboard-page) {
     padding-right: 2px !important;
     width: 53px;
 }
-.dashboard-grid .time-badge {
+.expanded-grid .time-badge {
     width: 66px;
 }
 
@@ -500,8 +500,8 @@ body:not(.dashboard-page) {
     }
 }
 
-/* Dashboard Desktop Styles */
-body.dashboard-page {
+/* Expanded Desktop Styles */
+body.expanded-page {
     display: none;
     width: 100%;
     max-width: 100%;
@@ -515,11 +515,11 @@ body.dashboard-page {
     box-sizing: border-box;
 }
 
-body.dashboard-page.ready {
+body.expanded-page.ready {
     display: block;
 }
 
-body.dashboard-page #app {
+body.expanded-page #app {
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
@@ -530,25 +530,25 @@ body.dashboard-page #app {
     box-sizing: border-box;
 }
 
-body.dashboard-page .dashboard-grid {
+body.expanded-page .expanded-grid {
     display: grid;
     grid-template-columns: 3fr 2fr;
     gap: 24px;
     align-items: start;
 }
 
-body.dashboard-page .stale-column {
+body.expanded-page .stale-column {
     display: flex;
     flex-direction: column;
     gap: 24px;
     min-width: 0;
 }
 
-body.dashboard-page .resurface-item {
+body.expanded-page .resurface-item {
     width: 100%;
 }
 
-body.dashboard-page .stash-column {
+body.expanded-page .stash-column {
     display: flex;
     flex-direction: column;
     gap: 24px;
@@ -556,7 +556,7 @@ body.dashboard-page .stash-column {
 }
 
 /* Card overrides for Desktop Page */
-body.dashboard-page .card {
+body.expanded-page .card {
     background: rgba(30, 41, 59, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
@@ -578,7 +578,7 @@ body.dashboard-page .card {
 }
 
 /* Stale Queue List (Desktop version) */
-body.dashboard-page .resurface-list {
+body.expanded-page .resurface-list {
     max-height: none;
     overflow-y: visible;
     display: flex;
@@ -587,7 +587,7 @@ body.dashboard-page .resurface-list {
 }
 
 /* Make stale queue items larger on desktop */
-body.dashboard-page .resurface-item {
+body.expanded-page .resurface-item {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.04);
     border-radius: 10px;
@@ -595,31 +595,31 @@ body.dashboard-page .resurface-item {
     transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
 
-body.dashboard-page .resurface-item:hover {
+body.expanded-page .resurface-item:hover {
     background: rgba(255, 255, 255, 0.05);
     border-color: rgba(255, 255, 255, 0.08);
     transform: translateY(-1px);
 }
 
-body.dashboard-page .resurface-item .favicon {
+body.expanded-page .resurface-item .favicon {
     width: 20px;
     height: 20px;
     border-radius: 4px;
 }
 
-body.dashboard-page .resurface-item .title {
+body.expanded-page .resurface-item .title {
     font-size: 14px;
     font-weight: 500;
 }
 
-body.dashboard-page .time-badge {
+body.expanded-page .time-badge {
     font-size: 12px;
     padding: 3px 8px;
     border-radius: 6px;
 }
 
 /* Stash List Desktop version */
-body.dashboard-page .stash-list {
+body.expanded-page .stash-list {
     max-height: 400px;
     overflow-y: auto;
 }

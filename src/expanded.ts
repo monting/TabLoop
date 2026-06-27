@@ -14,7 +14,7 @@ interface ActiveTab {
   title?: string;
 }
 
-interface DashboardState {
+interface ExpandedState {
   settings: Settings;
   count: number;
   stash: StashItem[];
@@ -25,7 +25,7 @@ interface DashboardState {
   currentWindowId: number | null;
 }
 
-let currentState: DashboardState | null = null;
+let currentState: ExpandedState | null = null;
 let escapeHatchClicked = false;
 let activeView: 'grouped' | 'ungrouped' = (localStorage.getItem('stale_view_pref') as 'grouped' | 'ungrouped') || 'grouped';
 
@@ -43,7 +43,7 @@ function toTabInfo(tab: chrome.tabs.Tab): TabInfo | null {
   };
 }
 
-async function readState(): Promise<DashboardState> {
+async function readState(): Promise<ExpandedState> {
   const settings = await loadSettings();
   const [rawTabs, [active], sessionData, stash, currentWindow] = await Promise.all([
     chrome.tabs.query(settings.limitScope === 'per-window' ? { currentWindow: true } : {}),
@@ -213,7 +213,7 @@ function initSkeleton(): void {
   app.innerHTML = `
     <div class="escape-hatch-container"></div>
     <div class="header">
-      <h1>TabLoop Dashboard</h1>
+      <h1>TabLoop Expanded</h1>
       <div style="display: flex; gap: 12px; align-items: center;">
         <div class="escape-container"></div>
         <button class="link settings" data-act="settings" title="Settings" aria-label="Settings" style="padding-left: 0; display: flex; align-items: center; justify-content: center;">
@@ -225,7 +225,7 @@ function initSkeleton(): void {
       </div>
     </div>
 
-    <div class="dashboard-grid">
+    <div class="expanded-grid">
       <div class="stale-column">
         <div class="card resurface-queue">
           <div class="resurface-head">
@@ -257,7 +257,7 @@ function initSkeleton(): void {
   `;
 }
 
-function render(state: DashboardState): void {
+function render(state: ExpandedState): void {
   const { settings, count, stash, upcomingTabs, times } = state;
   const max = settings.maxTabs;
   const atLimit = count >= max;
@@ -435,11 +435,11 @@ async function refresh(): Promise<void> {
     render(currentState);
     document.body.classList.add('ready');
   } catch (err) {
-    console.error("Dashboard error:", err);
+    console.error("Expanded page error:", err);
     document.body.classList.add('ready');
     app.innerHTML = `
       <div class="card error" style="border: 1px solid var(--over); padding: 20px; background: rgba(239, 68, 68, 0.1); margin: 20px;">
-        <h2 style="color: var(--over); margin-top: 0;">Dashboard Loading Error</h2>
+        <h2 style="color: var(--over); margin-top: 0;">Expanded Page Loading Error</h2>
         <pre style="color: var(--text-primary); white-space: pre-wrap; font-family: monospace;">${err instanceof Error ? err.stack || err.message : String(err)}</pre>
       </div>
     `;
@@ -551,7 +551,7 @@ app.addEventListener('click', async (e) => {
   }
 });
 
-// Watch for tab additions/removals/updates to keep the dashboard live
+// Watch for tab additions/removals/updates to keep the page live
 chrome.tabs.onCreated.addListener(() => void refresh());
 chrome.tabs.onRemoved.addListener(() => void refresh());
 chrome.tabs.onUpdated.addListener((_id, changeInfo) => {
