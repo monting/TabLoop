@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TabLoop",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Limit your open tabs and close the tab loop.",
   "icons": {
     "16": "icon-16.png",
